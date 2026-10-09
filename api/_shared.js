@@ -59,6 +59,14 @@ export async function readAllocation(id) {
   return { sender: r[0], tag: r[2], amount: r[3], expiresAt: r[4], status: Number(r[5]) };
 }
 
+// ---- FabrikaPay (invoices): read-only, used to check who owns an invoice
+const payAbi = parseAbi(['function getRequest(bytes32 id) view returns (address recipient, uint256 amount, uint64 expiresAt, uint8 status, address payer, uint64 paidAt, uint64 paidBlock)']);
+export async function readRequest(id) {
+  const r = await publicClient.readContract({ address: need('PAY_ADDRESS', 'VITE_PAY_ADDRESS'), abi: payAbi, functionName: 'getRequest', args: [id] });
+  return { recipient: String(r[0]).toLowerCase(), status: Number(r[3]) };
+}
+export const maskEmail = (e) => { const [l, d] = String(e || '').split('@'); return l && d ? `${l[0]}***@${d}` : ''; };
+
 // ---- Privy access token -> Privy user id (the "sub" claim)
 let jwks;
 export async function verifyPrivy(req) {
@@ -89,7 +97,10 @@ export async function privyUser(did) {
   const accounts = Array.isArray(u.linked_accounts) ? u.linked_accounts : [];
   const x = accounts.find((a) => a.type === 'twitter_oauth');
   const wallets = accounts.filter((a) => a.type === 'wallet' && a.address).map((a) => String(a.address).toLowerCase());
-  return { xUsername: x?.username ? normalizeHandle(x.username) : '', wallets };
+  const em = accounts.find((a) => a.type === 'email');
+  const gg = accounts.find((a) => a.type === 'google_oauth');
+  const email = String(em?.address || gg?.email || '').toLowerCase();
+  return { xUsername: x?.username ? normalizeHandle(x.username) : '', wallets, email };
 }
 
 // ---- Upstash Redis over REST (works from serverless, no extra package)
@@ -104,6 +115,9 @@ async function redis(...cmd) {
 export const kvSet = (k, v, ttl) => redis('SET', k, JSON.stringify(v), 'EX', String(ttl));
 export const kvGet = async (k) => { const r = await redis('GET', k); return r ? JSON.parse(r) : null; };
 export const kvDel = (k) => redis('DEL', k);
+export const kvCount = async (k, ttl) => { const n = Number(await redis('INCR', k)); if (n === 1) await redis('EXPIRE', k, String(ttl)); return n; };
+export const kvPush = async (k, v, max = 200) => { await redis('LPUSH', k, JSON.stringify(v)); await redis('LTRIM', k, '0', String(max - 1)); };
+export const kvList = async (k) => ((await redis('LRANGE', k, '0', '199')) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
 export const kvLock = async (k, ttl) => (await redis('SET', k, '1', 'NX', 'EX', String(ttl))) === 'OK';
 
 // ---- Telegram
