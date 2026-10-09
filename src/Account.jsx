@@ -2,6 +2,7 @@ import { copyText } from './ui.jsx';
 import { FAUCET, explorer } from './chain.js';
 import { fmtMon, shortAddr, loadTransfers } from './lib.js';
 import { Link } from './router.jsx';
+import { receiptPath } from './Receipt.jsx';
 import Batches from './Batches.jsx';
 import Invoices from './Invoices.jsx';
 import Gate from './Gate.jsx';
@@ -45,7 +46,7 @@ function Transfers({ address }) {
           <div className="act" key={t.hash}>
             <span className="t">{shortAddr(t.to)}</span>
             <span className="a">{fmtMon(BigInt(t.amount))} MON</span>
-            <span className="s"><a href={explorer.tx(t.hash)} target="_blank" rel="noopener">Receipt</a></span>
+            <span className="s"><Link to={receiptPath(t.hash)}>Receipt</Link></span>
           </div>
         ))}
       </div>

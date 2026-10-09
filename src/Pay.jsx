@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { formatEther } from 'viem';
-import { PAY, payAbi, publicClient, explorer, FAUCET, PAY_STATUS } from './chain.js';
+import { PAY, payAbi, publicClient, FAUCET, PAY_STATUS } from './chain.js';
+import { ReceiptCard } from './Receipt.jsx';
 import { fmtMon, fmtDate, shortAddr, cleanError } from './lib.js';
 import { Badge } from './ui.jsx';
 
 const ID_RE = /^0x[0-9a-fA-F]{64}$/;
-const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 
 export default function Pay({ acct }) {
   const id = new URLSearchParams(location.search).get('i') || '';
@@ -75,10 +75,10 @@ export default function Pay({ acct }) {
               <div className="set-row"><span>Pay by</span><span>{Number(info.expiresAt) ? fmtDate(info.expiresAt) : 'No deadline'}</span></div>
             </div>
             {paid && (
-              <div className="done-top">
-                <span className="okmark">{CHECK}</span>
-                <span className="speed">Paid in {paid.took}s · <a href={explorer.tx(paid.hash)} target="_blank" rel="noopener">Receipt</a></span>
-              </div>
+              <ReceiptCard
+                title="Invoice paid" amount={info.amount} hash={paid.hash} took={paid.took}
+                rows={[['Paid to', verified || shortAddr(info.recipient)], info.note ? ['For', info.note] : null, ['From', shortAddr(acct.address)]]}
+              />
             )}
             {open && !paid && (
               <>

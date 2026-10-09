@@ -180,3 +180,45 @@ details.paste textarea { margin-top:10px; }
 .tabbar { grid-template-columns:repeat(5,1fr); }
 .tabbar a { font-size:11.5px; }
 .act .links { grid-column:1 / -1; }
+
+/* In-app receipt (Monad purple accent) */
+:root { --monad:#836EF9; --monad-tint:#EFEBFE; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --monad:#A596FB; --monad-tint:#1D1838; } }
+:root[data-theme="dark"] { --monad:#A596FB; --monad-tint:#1D1838; }
+.receipt { background:var(--surface); border:1px solid var(--line); border-top:4px solid var(--monad); border-radius:18px; padding:18px 20px; display:grid; gap:14px; }
+.receipt-top { display:flex; justify-content:space-between; gap:10px; font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-2); }
+.receipt-brand { color:var(--monad); font-weight:600; }
+.receipt-head { display:grid; gap:6px; justify-items:start; }
+.receipt-head h2 { font:500 22px/1.15 var(--font); letter-spacing:-.02em; margin:6px 0 0; }
+.receipt-amt { font:300 44px/1 var(--font); letter-spacing:-.035em; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.receipt-amt small { font:400 16px/1 var(--font); color:var(--ink-2); margin-left:6px; letter-spacing:0; }
+.receipt-tear { width:100%; height:4px; display:block; }
+.receipt-tear line { stroke:var(--ink-2); stroke-width:1.5; stroke-dasharray:5 6; opacity:.6; vector-effect:non-scaling-stroke; }
+.receipt-actions { display:flex; gap:8px; flex-wrap:wrap; } .receipt-actions > * { flex:1 1 140px; }
+.receipt[data-ok="0"] { border-top-color:var(--alert); }
+
+/* ===== Monad purple: accents only (about 15-20% of the screen) =====
+   Official name: "Monad Purple" (monad.xyz/brand-and-media-kit). Text-safe shades are deeper so white text keeps contrast. */
+:root {
+  --monad:#836EF9;        /* brand purple: lines, marks, stripes */
+  --monad-btn:#6E56F0;    /* buttons: white text stays readable */
+  --monad-ink:#5B42E0;    /* purple text and links on light */
+  --monad-tint:#EFEBFE;   /* soft backgrounds */
+  --silk-3:#E9E4FE;       /* hero gradient ends in a soft purple glow */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --monad:#836EF9; --monad-btn:#7660F5; --monad-ink:#A596FB; --monad-tint:#1D1838; --silk-3:#2A2160; }
+}
+:root[data-theme="dark"] { --monad:#836EF9; --monad-btn:#7660F5; --monad-ink:#A596FB; --monad-tint:#1D1838; --silk-3:#2A2160; }
+
+.mark svg { color:var(--monad); }
+.btn:not(.ghost), .pill.solid { background:var(--monad-btn); border-color:var(--monad-btn); color:#fff; }
+.btn.ghost:hover { border-color:var(--monad); color:var(--monad-ink); }
+.nav a[aria-current="page"] { color:var(--monad-ink); border-color:var(--monad); }
+.tabbar a[aria-current="page"] { color:var(--monad-ink); box-shadow:inset 0 2px 0 var(--monad); }
+.seg button[aria-selected="true"] { background:var(--monad-btn); color:#fff; }
+.tab[aria-selected="true"] { color:var(--monad-ink); border-bottom-color:var(--monad); }
+.card a:not(.btn), .note a, .sub a, .msg a { color:var(--monad-ink); }
+.btn:focus-visible,.pill:focus-visible,.tab:focus-visible,.copy:focus-visible,a:focus-visible,textarea:focus-visible,select:focus-visible,
+.seg button:focus-visible,input:focus-visible { outline-color:var(--monad); }
+.badge i { border-color:var(--monad); }

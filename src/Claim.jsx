@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatEther } from 'viem';
-import { VAULT, BOT, vaultAbi, publicClient, explorer, STATUS } from './chain.js';
+import { VAULT, BOT, vaultAbi, publicClient, STATUS } from './chain.js';
+import { Link } from './router.jsx';
+import { receiptPath } from './Receipt.jsx';
 import { fmtMon, fmtDate, cleanError } from './lib.js';
 import { Stitch, Badge } from './ui.jsx';
 
@@ -134,7 +136,7 @@ export default function Claim({ acct }) {
                 <button className="btn" type="button" onClick={claim} disabled={busy || !confirmed} style={{ marginTop: 10 }}>{busy && confirmed ? 'Claiming…' : 'Claim to my wallet'}</button>
               </>
             )}
-            {tx && tx !== 'done' && <p className="msg"><a href={explorer.tx(tx)} target="_blank" rel="noopener">View transaction</a></p>}
+            {tx && tx !== 'done' && <p className="msg"><Link to={receiptPath(tx)}>View receipt</Link></p>}
             {!open && !paid && <p className="msg">This payout is {STATUS[info.status].toLowerCase()} and can no longer be claimed.</p>}
             <p className="msg bad" role="alert">{err}</p>
           </>

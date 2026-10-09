@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatEther } from 'viem';
-import { VAULT, vaultAbi, publicClient, explorer, STATUS } from './chain.js';
+import { VAULT, vaultAbi, publicClient, STATUS } from './chain.js';
+import { Link } from './router.jsx';
+import { receiptPath } from './Receipt.jsx';
 import { loadBatches, cleanError, fmtMon, fmtDate, KINDS } from './lib.js';
 import { Badge } from './ui.jsx';
 import Share from './Share.jsx';
@@ -77,7 +79,7 @@ export default function Batches({ acct, toast }) {
                 );
               })}
             </ul>
-            <p className="note"><a href={explorer.tx(b.hash)} target="_blank" rel="noopener">Transaction</a> · returns to you after {fmtDate(b.expiresAt)}</p>
+            <p className="note"><Link to={receiptPath(b.hash)}>Receipt</Link> · returns to you after {fmtDate(b.expiresAt)}</p>
           </div>
         );
       })}

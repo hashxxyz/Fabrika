@@ -1,17 +1,17 @@
 import { useMemo, useState } from 'react';
 import { formatEther } from 'viem';
-import { VAULT, vaultAbi, publicClient, explorer } from './chain.js';
+import { VAULT, vaultAbi, publicClient } from './chain.js';
 import {
-  parseLines, parseAmount, normalizeHandle, tagOf, randomId, saveBatch, saveTransfer, cleanError, fmtMon, shortAddr, KINDS, ADDR_RE,
+  parseLines, parseAmount, normalizeHandle, tagOf, randomId, saveBatch, saveTransfer, cleanError, fmtMon, fmtDate, shortAddr, KINDS, ADDR_RE,
 } from './lib.js';
 import Share from './Share.jsx';
 import Gate from './Gate.jsx';
 import { pushHistory } from './history.js';
 import { Link } from './router.jsx';
+import { ReceiptCard } from './Receipt.jsx';
 
 const EXPIRY = [['86400', '1 day'], ['604800', '7 days'], ['2592000', '30 days']];
 const TYPES = [['telegram', 'Telegram'], ['x', 'X'], ['wallet', 'Wallet']];
-const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 const secs = (t0) => Math.max(0.1, (performance.now() - t0) / 1000).toFixed(1);
 
 export default function Transfer({ acct, toast }) {
@@ -126,14 +126,16 @@ function HandleForm({ kind, acct, toast }) {
   if (result) {
     return (
       <>
-        <div className="card">
-          <div className="done-top">
-            <span className="okmark">{CHECK}</span>
-            <h2>Money is ready</h2>
-            <span className="speed">Confirmed in {result.took}s on Monad</span>
-          </div>
-          <p className="sub" style={{ margin: 0 }}>Send each person their link. They sign in and the money lands in their account. <a href={explorer.tx(result.hash)} target="_blank" rel="noopener">View receipt</a></p>
-        </div>
+        <ReceiptCard
+          title="Money is ready"
+          amount={result.items.reduce((s, it) => s + BigInt(it.amount), 0n)}
+          hash={result.hash} took={result.took} toast={toast}
+          rows={[
+            ['Recipients', `${result.items.length} ${result.items.length === 1 ? 'person' : 'people'}`],
+            ['Returns to you after', fmtDate(result.expiresAt)],
+          ]}
+        />
+        <p className="sub" style={{ margin: 0 }}>Send each person their link. They sign in and the money lands in their account.</p>
         <div className="card">
           {result.items.map((it) => (
             <div className="act" key={it.id} style={{ gridTemplateColumns: '1fr auto' }}>
@@ -234,14 +236,12 @@ function WalletForm({ acct, toast }) {
   if (done) {
     return (
       <>
-        <div className="card">
-          <div className="done-top">
-            <span className="okmark">{CHECK}</span>
-            <h2>{fmtMon(BigInt(done.amount))} MON sent</h2>
-            <span className="speed">Confirmed in {done.took}s on Monad</span>
-          </div>
-          <p className="sub" style={{ margin: 0 }}>To {shortAddr(done.to)}. <a href={explorer.tx(done.hash)} target="_blank" rel="noopener">View receipt</a></p>
-        </div>
+        <ReceiptCard
+          title="Money sent"
+          amount={BigInt(done.amount)}
+          hash={done.hash} took={done.took} toast={toast}
+          rows={[['To', shortAddr(done.to)], ['From', shortAddr(acct.address)]]}
+        />
         <button className="btn ghost" type="button" onClick={() => setDone(null)}>Send another</button>
       </>
     );

@@ -8,6 +8,7 @@ import Settings from './Settings.jsx';
 import Claim from './Claim.jsx';
 import Invoice from './Invoice.jsx';
 import Pay from './Pay.jsx';
+import ReceiptPage from './Receipt.jsx';
 import { shortAddr } from './lib.js';
 import { syncHistory } from './history.js';
 
@@ -45,6 +46,7 @@ export default function App() {
 
   let page;
   if (path.startsWith('/pay')) page = <Pay acct={acct} />;
+  else if (path === '/receipt') page = <ReceiptPage toast={showToast} />;
   else if (path.startsWith('/claim')) page = <Claim acct={acct} toast={showToast} />;
   else if (path === '/invoice') page = <Invoice acct={acct} toast={showToast} />;
   else if (path === '/transfer') page = <Transfer acct={acct} toast={showToast} />;
