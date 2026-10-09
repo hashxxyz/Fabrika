@@ -1,9 +1,19 @@
 import { keccak256, toBytes, toHex, parseEther, formatEther } from 'viem';
 
 // The backend must use the same rule: trim, drop leading @, lowercase, keccak256 of the UTF-8 bytes.
+// Telegram tags are the plain hash (unchanged, so old payouts still work). X tags are namespaced with "x:"
+// so the same name on both platforms can never match the wrong person. Telegram names cannot contain ":".
 export const normalizeHandle = (s) => String(s || '').trim().replace(/^@+/, '').toLowerCase();
-export const HANDLE_RE = /^[a-z][a-z0-9_]{4,31}$/;
-export const tagOf = (handle) => keccak256(toBytes(normalizeHandle(handle)));
+export const KINDS = {
+  telegram: { label: 'Telegram', re: /^[a-z][a-z0-9_]{4,31}$/, hint: 'a Telegram username' },
+  x: { label: 'X', re: /^[a-z0-9_]{1,15}$/, hint: 'an X username' },
+};
+export const HANDLE_RE = KINDS.telegram.re;
+export const tagOf = (handle, kind = 'telegram') => {
+  const h = normalizeHandle(handle);
+  return keccak256(toBytes(kind === 'x' ? `x:${h}` : h));
+};
+export const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
 export const randomId = () => toHex(crypto.getRandomValues(new Uint8Array(32)));
 
 export function parseAmount(s) {
@@ -14,7 +24,8 @@ export function parseAmount(s) {
 }
 
 // One recipient per line: "@ada 2.5" or "ada, 2.5"
-export function parseLines(text) {
+export function parseLines(text, kind = 'telegram') {
+  const k = KINDS[kind] || KINDS.telegram;
   const rows = [], errors = [], seen = new Set();
   String(text || '').split('\n').forEach((raw, i) => {
     const line = raw.trim();
@@ -23,7 +34,7 @@ export function parseLines(text) {
     if (!m) { errors.push(`Line ${i + 1}: use "@name amount"`); return; }
     const handle = normalizeHandle(m[1]);
     const amount = parseAmount(m[2]);
-    if (!HANDLE_RE.test(handle)) { errors.push(`Line ${i + 1}: @${handle} is not a valid Telegram username`); return; }
+    if (!k.re.test(handle)) { errors.push(`Line ${i + 1}: @${handle} is not a valid ${k.label} username`); return; }
     if (!amount) { errors.push(`Line ${i + 1}: bad amount`); return; }
     if (seen.has(handle)) { errors.push(`Line ${i + 1}: @${handle} appears twice`); return; }
     seen.add(handle);
@@ -37,7 +48,8 @@ export const fmtMon = (wei, d = 4) => {
   const n = Number(formatEther(wei));
   return n.toLocaleString(undefined, { maximumFractionDigits: d });
 };
-export const claimUrl = (allocationId) => `${location.origin}/claim?a=${allocationId}`;
+export const claimUrl = (allocationId, kind = 'telegram') =>
+  `${location.origin}/claim?a=${allocationId}${kind === 'x' ? '&k=x' : ''}`;
 export const fmtDate = (sec) => new Date(Number(sec) * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const key = (addr) => `fabrika.batches.${String(addr).toLowerCase()}`;
@@ -52,3 +64,13 @@ export function cleanError(e) {
   if (/insufficient funds/i.test(m)) return 'Not enough MON in your wallet for this amount plus the network fee.';
   return m.length > 200 ? m.slice(0, 200) + '…' : m;
 }
+
+// Direct wallet transfers (no vault): kept on this device so they show up on the Account page.
+const tkey = (addr) => `fabrika.transfers.${String(addr).toLowerCase()}`;
+export const loadTransfers = (addr) => { try { return JSON.parse(localStorage.getItem(tkey(addr)) || '[]'); } catch { return []; } };
+export const saveTransfer = (addr, t) => {
+  try { localStorage.setItem(tkey(addr), JSON.stringify([t, ...loadTransfers(addr)].slice(0, 50))); } catch { /* storage full or blocked */ }
+};
+export const clearLocalData = (addr) => {
+  try { localStorage.removeItem(key(addr)); localStorage.removeItem(tkey(addr)); } catch { /* ignore */ }
+};

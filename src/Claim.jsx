@@ -7,7 +7,10 @@ import { Stitch, Badge } from './ui.jsx';
 const ID_RE = /^0x[0-9a-fA-F]{64}$/;
 
 export default function Claim({ acct }) {
-  const a = new URLSearchParams(location.search).get('a') || '';
+  const q = new URLSearchParams(location.search);
+  const a = q.get('a') || '';
+  const kind = q.get('k') === 'x' ? 'x' : 'telegram';
+  const isX = kind === 'x';
   const [info, setInfo] = useState(null);
   const [loadErr, setLoadErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -15,6 +18,7 @@ export default function Claim({ acct }) {
   const [tx, setTx] = useState('');
   const [tgLink, setTgLink] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [linkedAs, setLinkedAs] = useState('');
 
   useEffect(() => {
     if (!ID_RE.test(a)) { setLoadErr('This claim link is not valid.'); return; }
@@ -38,12 +42,13 @@ export default function Claim({ acct }) {
   const checkConfirmed = useCallback(async () => {
     if (!acct.authenticated || !acct.address || !ID_RE.test(a)) return false;
     try {
-      const j = await call(`/api/status?a=${a}&d=${acct.address}`);
+      const j = await call(`/api/status?a=${a}&d=${acct.address}&k=${kind}`);
       if (j.confirmed) setConfirmed(true);
+      setLinkedAs(j.linked || '');
       return !!j.confirmed;
     } catch { return false; }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [acct.authenticated, acct.address, a]);
+  }, [acct.authenticated, acct.address, a, kind]);
 
   // Check once on load (the person may already have confirmed), then poll while they are in Telegram.
   useEffect(() => { checkConfirmed(); }, [checkConfirmed]);
@@ -61,10 +66,20 @@ export default function Claim({ acct }) {
     } catch (e) { setErr(cleanError(e)); } finally { setBusy(false); }
   }
 
+  async function linkX() {
+    setErr(''); setBusy(true);
+    try {
+      await acct.linkTwitter();
+      // Give Privy a moment to save the link, then check it against the payout.
+      await new Promise((r) => setTimeout(r, 800));
+      await checkConfirmed();
+    } catch (e) { setErr(cleanError(e)); } finally { setBusy(false); }
+  }
+
   async function claim() {
     setErr(''); setBusy(true);
     try {
-      const j = await call('/api/claim', { method: 'POST', body: JSON.stringify({ allocationId: a, destination: acct.address }) });
+      const j = await call('/api/claim', { method: 'POST', body: JSON.stringify({ allocationId: a, destination: acct.address, kind }) });
       setTx(j.txHash || 'done');
     } catch (e) {
       setErr(cleanError(e));
@@ -80,7 +95,7 @@ export default function Claim({ acct }) {
     <div className="hero-grid">
       <div>
         <h1>{paid ? 'It is yours.' : 'Someone paid you.'}</h1>
-        <p className="lede">Sign in, confirm your Telegram username, and the vault sends the MON to your wallet.</p>
+        <p className="lede">{isX ? 'Sign in, link your X account, and the vault sends the MON to your wallet.' : 'Sign in, confirm your Telegram username, and the vault sends the MON to your wallet.'}</p>
       </div>
       <div className="slip" data-paid={paid ? '1' : '0'}>
         {loadErr ? <p className="err">{loadErr}</p> : !info ? <p className="note">Checking the vault…</p> : (
@@ -92,24 +107,30 @@ export default function Claim({ acct }) {
             {open && !tx && (
               <ol className="mini steps2">
                 <li data-done={acct.authenticated ? '1' : '0'}>1. Sign in</li>
-                <li data-done={confirmed ? '1' : '0'}>2. Confirm your Telegram username</li>
+                <li data-done={confirmed ? '1' : '0'}>{isX ? '2. Link your X account' : '2. Confirm your Telegram username'}</li>
                 <li>3. Claim</li>
               </ol>
             )}
             {open && !acct.authenticated && <button className="btn" type="button" onClick={acct.login} disabled={!acct.ready}>Sign in</button>}
             {open && acct.authenticated && !tx && (
               <>
-                {!confirmed && !BOT && <p className="msg bad">The Telegram bot is not set up yet.</p>}
-                {!confirmed && BOT && !tgLink && (
+                {!isX && !confirmed && !BOT && <p className="msg bad">The Telegram bot is not set up yet.</p>}
+                {!isX && !confirmed && BOT && !tgLink && (
                   <button className="btn ghost" type="button" onClick={startTelegram} disabled={busy || !acct.address}>{busy ? 'One moment…' : 'Confirm on Telegram'}</button>
                 )}
-                {!confirmed && tgLink && (
+                {!isX && !confirmed && tgLink && (
                   <>
                     <a className="btn ghost linkbtn2" href={tgLink} target="_blank" rel="noopener">Open Telegram</a>
                     <p className="note">In Telegram, tap Start, then confirm your wallet. This page updates by itself.</p>
                   </>
                 )}
-                {confirmed && <p className="note">Telegram confirmed.</p>}
+                {isX && !confirmed && (
+                  <>
+                    <button className="btn ghost" type="button" onClick={linkX} disabled={busy || !acct.address}>{busy ? 'One moment…' : linkedAs ? 'Link a different X account' : 'Link your X account'}</button>
+                    {linkedAs && <p className="msg bad">You are linked as @{linkedAs}, but this payout is for a different X username.</p>}
+                  </>
+                )}
+                {confirmed && <p className="note">{isX ? `X account @${linkedAs} confirmed.` : 'Telegram confirmed.'}</p>}
                 <button className="btn" type="button" onClick={claim} disabled={busy || !confirmed} style={{ marginTop: 10 }}>{busy && confirmed ? 'Claiming…' : 'Claim to my wallet'}</button>
               </>
             )}

@@ -23,7 +23,7 @@ if (!PRIVY_APP_ID) {
     <PrivyProvider
       appId={PRIVY_APP_ID}
       config={{
-        loginMethods: ['email', 'google', 'wallet'],
+        loginMethods: ['email', 'google', 'twitter', 'wallet'],
         appearance: {
           theme: currentTheme(),
           accentColor: '#2E7D53',

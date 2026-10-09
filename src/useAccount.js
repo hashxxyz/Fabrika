@@ -4,7 +4,7 @@ import { createWalletClient, custom } from 'viem';
 import { monadTestnet, publicClient } from './chain.js';
 
 export default function useAccount() {
-  const { ready, authenticated, login, logout, getAccessToken, user } = usePrivy();
+  const { ready, authenticated, login, logout, getAccessToken, user, linkTwitter } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === 'privy') || wallets[0];
   const address = wallet?.address;
@@ -28,6 +28,7 @@ export default function useAccount() {
     return createWalletClient({ account: address, chain: monadTestnet, transport: custom(provider) });
   }, [wallet, address]);
 
-  const label = user?.email?.address || user?.google?.email || '';
-  return { ready, authenticated, login, logout, getAccessToken, wallet, address, balance, refresh, getClient, label };
+  const xName = user?.twitter?.username || '';
+  const label = user?.email?.address || user?.google?.email || (xName ? `@${xName}` : '');
+  return { ready, authenticated, login, logout, getAccessToken, wallet, address, balance, refresh, getClient, label, linkTwitter, xName };
 }

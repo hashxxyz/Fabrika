@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatEther } from 'viem';
 import { VAULT, vaultAbi, publicClient, explorer, STATUS } from './chain.js';
-import { loadBatches, cleanError, fmtMon, fmtDate } from './lib.js';
+import { loadBatches, cleanError, fmtMon, fmtDate, KINDS } from './lib.js';
 import { Badge } from './ui.jsx';
 import Share from './Share.jsx';
 
@@ -44,7 +44,7 @@ export default function Batches({ acct, toast }) {
   }
 
   if (!batches.length) {
-    return <div className="pane"><h2>Payouts</h2><p className="empty">No payouts from this device yet. Create one and it shows up here with live status from the vault.</p></div>;
+    return <div className="pane"><h2>Payouts</h2><p className="empty">No payouts from this device yet. Make one on the Transfer page and it shows up here with live status from the vault.</p></div>;
   }
 
   return (
@@ -65,11 +65,11 @@ export default function Batches({ acct, toast }) {
                 const s = status[it.id];
                 return (
                   <li key={it.id}>
-                    <span className="t">@{it.handle}</span>
+                    <span className="t">@{it.handle} <em className="tag">{KINDS[it.kind || 'telegram'].label}</em></span>
                     <span className="a">{fmtMon(BigInt(it.amount))} MON</span>
                     <span className="links">
                       <Badge>{s == null ? '…' : STATUS[s]}</Badge>
-                      {s === 1 && <Share id={it.id} handle={it.handle} amount={formatEther(BigInt(it.amount))} toast={toast} />}
+                      {s === 1 && <Share id={it.id} kind={it.kind || 'telegram'} handle={it.handle} amount={formatEther(BigInt(it.amount))} toast={toast} />}
                       {s === 1 && <button type="button" disabled={busyId === it.id} onClick={() => act('cancel', it.id)}>Cancel</button>}
                       {s === 5 && <button type="button" disabled={busyId === it.id} onClick={() => act('refund', it.id)}>Take back</button>}
                     </span>
