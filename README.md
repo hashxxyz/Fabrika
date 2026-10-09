@@ -33,3 +33,11 @@ npm run build    # outputs dist/
 ```
 
 Deploy on Vercel from GitHub or with the Vercel CLI. Vercel detects Vite and runs the build. Dragging the raw folder into a static host skips the build and WalletConnect falls back to a CDN.
+
+## Email and social login (no wallet app)
+Fabrika can create a wallet for people who sign in with Google or email, using MetaMask Embedded Wallets.
+1. Create a project at https://dashboard.web3auth.io on the Sapphire Devnet environment and copy the Client ID.
+2. In the dashboard, add your site domain (for example https://fabrika.vercel.app) to the allowed origins.
+3. In the dashboard, under Chains and Networks, add Monad Testnet: chain ID 0x279f (10143), RPC https://testnet-rpc.monad.xyz, ticker MON, explorer https://testnet.monadvision.com.
+4. Paste the Client ID into `W3A_CLIENT_ID` near the top of the script in `index.html`.
+New wallets start with 0 MON. The page links to the faucet when the balance is empty.

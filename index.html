@@ -259,6 +259,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
           <p>Use the wallet you already have. Fabrika never holds your funds.</p>
           <button class="btn" id="connect" type="button">Connect wallet</button>
           <p class="err" id="err" role="alert"></p>
+          <button class="linkbtn" id="moreWallets" type="button" hidden>Use another wallet</button>
         </div>
 
         <div id="viewIn" class="who" hidden>
@@ -283,7 +284,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 </div>
 
 <div class="wrap">
-  <section class="app" id="app" hidden>
+  <section class="app" id="app">
     <div class="start" id="start">
       <div class="start-head">
         <div><h2>Getting started</h2><p id="startSub">Five steps. Each one takes a minute.</p></div>
@@ -295,6 +296,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tabRequest" aria-selected="true" data-tab="request" type="button">Request</button>
       <button class="tab" role="tab" id="tabSend" aria-selected="false" data-tab="send" type="button">Send</button>
+      <button class="tab" role="tab" id="tabFunds" aria-selected="false" data-tab="funds" type="button">Test funds</button>
       <button class="tab" role="tab" id="tabHistory" aria-selected="false" data-tab="history" type="button">History</button>
     </div>
 
@@ -328,6 +330,15 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
         <div data-stitch></div>
         <p class="msg" id="sendTxMsg" role="status" aria-live="polite"></p>
       </div>
+    </div>
+
+    <div class="pane" id="paneFunds" role="tabpanel" hidden>
+      <h2>Get test MON</h2>
+      <p>Test MON is free and has no value. You need a little for the network fee, and to pay a request.</p>
+      <div class="addr"><code id="fundAddr">Not signed in yet</code></div>
+      <div class="bal"><span class="n" id="fundBal">0.0000</span><span class="u">MON</span></div>
+      <button class="btn" id="fundBtn" type="button">Get test MON</button>
+      <p class="note" id="fundNote">Sign in first. Then tap Get test MON and Fabrika asks the Monad faucet for you. If the faucet blocks it, you get a link to claim by hand.</p>
     </div>
 
     <div class="pane" id="paneHistory" role="tabpanel" hidden style="max-width:none">
@@ -430,6 +441,10 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   var CONTRACT = '';
   // WalletConnect project ID from https://dashboard.reown.com (free). Leave empty to hide WalletConnect.
   var WC_PROJECT_ID = '6fe4af6a7d839eb20a89d49725fdd194';
+  // Email and social login (MetaMask Embedded Wallets, formerly Web3Auth). Get a Client ID at https://dashboard.web3auth.io. Leave empty to hide it.
+  var W3A_CLIENT_ID = '';
+  // SAPPHIRE_DEVNET for testing and the hackathon. SAPPHIRE_MAINNET once the project is on the production environment.
+  var W3A_NETWORK = 'SAPPHIRE_DEVNET';
   var CHAIN = {
     chainId: '0x279f',
     chainName: 'Monad Testnet',
@@ -606,20 +621,20 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   async function refresh() {
     var onChain = state.chainId && state.chainId.toLowerCase() === CHAIN.chainId;
     var net = $('net');
-    $('app').hidden = !state.account;
     updatePayBtn(); renderStart();
     if (!state.account) {
-      net.dataset.state = 'idle'; $('netText').textContent = 'Monad testnet';
+      net.dataset.state = 'idle'; $('netText').textContent = 'Monad testnet'; $('fundAddr').textContent = 'Not signed in yet'; $('fundBal').textContent = '0.0000';
       $('viewOut').hidden = false; $('viewIn').hidden = true; return;
     }
     $('viewOut').hidden = true; $('viewIn').hidden = false;
     $('addr').textContent = short(state.account); $('addr').title = state.account;
+    $('fundAddr').textContent = state.account;
     net.dataset.state = onChain ? 'ok' : 'warn';
     $('netText').textContent = onChain ? 'Monad testnet' : 'Wrong network';
     $('wrong').hidden = !!onChain; $('switch').hidden = !!onChain;
     try {
       var w = await rpc('eth_getBalance', [state.account, 'latest']);
-      $('bal').textContent = fmt(w); state.bal = BigInt(w); renderStart();
+      $('bal').textContent = fmt(w); $('fundBal').textContent = fmt(w); state.bal = BigInt(w); renderStart();
       $('low').hidden = BigInt(w) > 0n;
     } catch (e) { $('bal').textContent = 'n/a'; $('low').hidden = true; }
   }
@@ -658,9 +673,16 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     try {
       await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN.chainId }] });
     } catch (e) {
-      if (e && (e.code === 4902 || e.code === -32603)) {
-        try { await p.request({ method: 'wallet_addEthereumChain', params: [CHAIN] }); } catch (e2) { toast('Network was not added'); }
-      } else if (!(e && e.code === 4001)) { toast('Could not switch network'); }
+      if (e && e.code === 4001) { await sync(); return; }
+      try { await p.request({ method: 'wallet_addEthereumChain', params: [CHAIN] }); }
+      catch (e2) {
+        if (!(e2 && e2.code === 4001)) {
+          var why = e2 && e2.message ? ' (' + String(e2.message).slice(0, 80) + ')' : '';
+          $('err').textContent = 'Your wallet did not add Monad testnet' + why + '. Add it by hand: chain ID 10143, RPC https://testnet-rpc.monad.xyz, symbol MON. Then reconnect.';
+          $('wrong').textContent = 'Add Monad testnet to your wallet by hand: chain ID 10143, RPC https://testnet-rpc.monad.xyz, symbol MON. Then tap Switch.';
+          toast('Add Monad testnet in your wallet');
+        }
+      }
     }
     await sync();
   }
@@ -687,6 +709,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   async function doSend() {
     if (state.busy) return;
     var err = $('sendErr'); err.textContent = '';
+    if (!state.account) { err.textContent = 'Sign in or connect a wallet to send MON, then tap Send again.'; connect(); return; }
     var to = $('sendTo').value.trim(), amt = parseAmount($('sendAmt').value);
     if (!ADDR_RE.test(to)) { err.textContent = 'Enter a full address that starts with 0x and has 40 characters after it.'; return; }
     if (!amt) { err.textContent = 'Enter an amount above 0, with up to 6 decimals.'; return; }
@@ -721,7 +744,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   // ---------- Request ----------
   function doRequest() {
     var err = $('reqErr'); err.textContent = '';
-    if (!state.account) { err.textContent = 'Connect your wallet first.'; return; }
+    if (!state.account) { err.textContent = 'Sign in or connect a wallet to create a link, then tap Create again.'; connect(); return; }
     var amt = parseAmount($('reqAmt').value);
     if (!amt) { err.textContent = 'Enter an amount above 0, with up to 6 decimals.'; return; }
     var note = $('reqNote').value.trim().slice(0, 60);
@@ -897,7 +920,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   async function doRequestC() {
     if (state.busy) return;
     var err = $('reqErr'); err.textContent = '';
-    if (!state.account) { err.textContent = 'Connect your wallet first.'; return; }
+    if (!state.account) { err.textContent = 'Sign in or connect a wallet to create a link, then tap Create again.'; connect(); return; }
     var amt = parseAmount($('reqAmt').value);
     if (!amt) { err.textContent = 'Enter an amount above 0, with up to 6 decimals.'; return; }
     var note = clipBytes($('reqNote').value.trim().slice(0, 60), 120), secs = parseInt($('reqExp').value, 10) || 0;
@@ -973,8 +996,8 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   function startSteps() {
     var h = histLoad();
     return [
-      { t: 'Connect your wallet', d: 'Use the wallet you already have.', done: !!state.account },
-      { t: 'Get test funds', d: 'Test MON is free and has no value. Claim some from the Monad faucet.', done: state.bal > 0n, href: 'https://faucet.monad.xyz', label: 'Open faucet' },
+      { t: 'Sign in or connect a wallet', d: 'Use Google, email or the wallet you already have.', done: !!state.account, fn: connect, label: 'Sign in' },
+      { t: 'Get test funds', d: 'Test MON is free and has no value. Claim some from the Monad faucet.', done: state.bal > 0n, tab: 'funds' },
       { t: 'Create a payment request', d: 'Enter an amount and a note to get a link you can share.', done: h.some(function (x) { return x.k === 'req'; }), tab: 'request' },
       { t: 'Pay a request or send MON', d: 'Open a payment link, or send test MON to any address.', done: h.some(function (x) { return x.k === 'pay' || x.k === 'send'; }), tab: 'send' },
       { t: 'See a request turn Paid', d: 'Watch the stitch close when the payment lands on Monad.', done: h.some(function (x) { return x.k === 'req' && x.st === 'paid'; }), tab: 'history' }
@@ -995,6 +1018,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
       var act = mk('div', 'act');
       if (x.done) act.appendChild(mk('span', 'tag', 'Done'));
       else if (x.href) { var a = mk('a', 'go', x.label || 'Go'); a.href = x.href; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a); }
+      else if (x.fn) { var f = mk('button', 'go', x.label || 'Go'); f.type = 'button'; f.addEventListener('click', function () { x.fn(); }); act.appendChild(f); }
       else if (x.tab) { var b = mk('button', 'go', 'Go'); b.type = 'button'; b.addEventListener('click', function () { goTab(x.tab); }); act.appendChild(b); }
       li.appendChild(act); ol.appendChild(li);
     });
@@ -1004,7 +1028,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 
   // ---------- Tabs ----------
   function setTab(name) {
-    ['request', 'send', 'history'].forEach(function (t) {
+    ['request', 'send', 'funds', 'history'].forEach(function (t) {
       var sel = t === name; var tab = $('tab' + t.charAt(0).toUpperCase() + t.slice(1));
       tab.setAttribute('aria-selected', sel ? 'true' : 'false');
       $('pane' + t.charAt(0).toUpperCase() + t.slice(1)).hidden = !sel;
@@ -1044,6 +1068,11 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     var list = Object.keys(found).map(function (k) { return found[k]; });
     var inj = window.ethereum;
     if (inj && !list.some(function (w) { return w.provider === inj; })) list.push({ info: { name: guessName(inj), icon: '', rdns: 'injected' }, provider: inj });
+    if (W3A_CLIENT_ID) {
+      var g0 = group('No wallet yet');
+      g0.appendChild(opt('button', 'Google, email or social login', 'No wallet app needed. Fabrika creates a wallet for you.', '', pickW3A));
+      body.appendChild(g0);
+    }
     if (list.length) {
       var g1 = group('Detected on this device');
       list.forEach(function (w) { g1.appendChild(opt('button', w.info.name, 'Connect with this wallet', w.info.icon, function () { pick(w); })); });
@@ -1071,6 +1100,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     if (state.account) return true;
     askWallets(); await sleep(150);
     var hasWallet = Object.keys(found).length > 0 || !!window.ethereum;
+    if (!hasWallet && W3A_CLIENT_ID) { pickW3A(); return false; }
     if (!hasWallet && WC_PROJECT_ID) { pickWC(); return false; }
     openWallets(); return false;
   }
@@ -1103,7 +1133,36 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     }
     throw new Error('WalletConnect could not load. Check your connection and try again.');
   }
-  function wcConfig() { return { projectId: WC_PROJECT_ID, optionalChains: [10143], rpcMap: { 10143: RPCS[0] }, showQrModal: true, metadata: { name: 'Fabrika', description: 'Pay and get paid with a link on Monad', url: location.origin, icons: [] } }; }
+  var W3A_URLS = [
+    'https://esm.sh/@web3auth/modal@10.11.0?bundle',
+    'https://cdn.jsdelivr.net/npm/@web3auth/modal@10.11.0/+esm'
+  ], w3a = null;
+  async function w3aInit() {
+    if (w3a) return w3a;
+    var lib = null;
+    for (var i = 0; i < W3A_URLS.length && !lib; i++) {
+      try { var m = await import(W3A_URLS[i]); if (m && m.Web3Auth) lib = m; } catch (e) {}
+    }
+    if (!lib) throw new Error('Login could not load. Check your connection and try again.');
+    var inst = new lib.Web3Auth({ clientId: W3A_CLIENT_ID, web3AuthNetwork: lib.WEB3AUTH_NETWORK[W3A_NETWORK] });
+    await inst.init(); w3a = inst; return inst;
+  }
+  function w3aProv(inst) { return (inst.connection && inst.connection.ethereumProvider) || inst.provider || null; }
+  async function pickW3A() {
+    closeWallets(); $('err').textContent = ''; toast('Opening login…');
+    try {
+      var inst = await w3aInit();
+      if (!inst.connected) await inst.connect();
+      var p = w3aProv(inst);
+      if (!p) throw new Error('Login finished but no wallet was created.');
+      state.prov = p; bind(p);
+      try { localStorage.setItem('fabrika.wallet', 'w3a'); } catch (e) {}
+      await doConnect();
+    } catch (e) {
+      $('err').textContent = 'Login did not finish' + (e && e.message ? ': ' + String(e.message).slice(0, 100) : '.');
+    }
+  }
+  function wcConfig() { return { projectId: WC_PROJECT_ID, chains: [1], optionalChains: [10143, 1], rpcMap: { 10143: RPCS[0] }, showQrModal: true, metadata: { name: 'Fabrika', description: 'Pay and get paid with a link on Monad', url: location.origin, icons: [] } }; }
   async function pickWC() {
     closeWallets(); $('err').textContent = ''; toast('Opening WalletConnect…');
     try {
@@ -1133,14 +1192,37 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 
   // ---------- Wire up ----------
   $('connect').addEventListener('click', connect);
+  if (W3A_CLIENT_ID) { $('moreWallets').hidden = false; $('moreWallets').addEventListener('click', openWallets); }
   $('switch').addEventListener('click', switchNet);
   $('disconnect').addEventListener('click', async function () {
     var p = state.prov;
     try { if (p && typeof p.disconnect === 'function') await p.disconnect(); } catch (e) {}
+    try { if (w3a && w3a.connected && p === w3aProv(w3a)) await w3a.logout(); } catch (e) {}
     state.account = null; state.prov = null;
     try { localStorage.setItem('fabrika.off', '1'); localStorage.removeItem('fabrika.wallet'); } catch (e) {}
     refresh(); toast('Disconnected from Fabrika');
   });
+  async function requestFunds() {
+    if (!state.account) { connect(); return; }
+    var btn = $('fundBtn'), note = $('fundNote');
+    btn.disabled = true; btn.textContent = 'Requesting…'; note.textContent = 'Asking the Monad faucet for test MON…';
+    try {
+      var ctrl = new AbortController(), to = setTimeout(function () { ctrl.abort(); }, 20000);
+      var r = await fetch('https://agents.devnads.com/v1/faucet', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chainId: 10143, address: state.account }), signal: ctrl.signal });
+      clearTimeout(to);
+      var j = {}; try { j = await r.json(); } catch (e) {}
+      if (!r.ok || !j.txHash) throw new Error('faucet');
+      note.textContent = 'Test MON sent. Your balance updates in a few seconds. ';
+      if (HASH_RE.test(j.txHash)) note.appendChild(explorerLink(j.txHash));
+      refresh(); setTimeout(refresh, 4000); setTimeout(refresh, 12000);
+    } catch (e) {
+      copyText(state.account);
+      note.textContent = 'The in-app request did not go through. Your address is copied. ';
+      var a = mk('a', null, 'Open the Monad faucet'); a.href = 'https://faucet.monad.xyz'; a.target = '_blank'; a.rel = 'noopener';
+      note.appendChild(a); note.appendChild(document.createTextNode(' and paste it there.'));
+    } finally { btn.disabled = false; btn.textContent = 'Get test MON'; }
+  }
+  $('fundBtn').addEventListener('click', requestFunds);
   $('copyAddr').addEventListener('click', function () { if (state.account) copyText(state.account); });
   $('goReq').addEventListener('click', function () { goTab('request'); });
   $('goSend').addEventListener('click', function () { goTab('send'); });
@@ -1178,6 +1260,9 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     if (saved === 'wc') {
       if (!WC_PROJECT_ID) return;
       try { var wp = await (await loadWC()).init(wcConfig()); if (wp.session) p = wp; } catch (e) {}
+    } else if (saved === 'w3a') {
+      if (!W3A_CLIENT_ID) return;
+      try { var wi = await w3aInit(); if (wi.connected) p = w3aProv(wi); } catch (e) {}
     } else if (found[saved]) p = found[saved].provider;
     else if (saved === 'injected' && window.ethereum) p = window.ethereum;
     if (!p) return;
