@@ -4,7 +4,7 @@
 <meta name="description" content="Get paid with a link. Fabrika is a payment-link app on Monad testnet.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Fabrika: get paid with a link">
-<meta property="og:description" content="Ask for money, send the link, watch it turn Paid. Runs on Monad testnet with free test MON.">
+<meta property="og:description" content="Send a payment link in any chat. Your friend signs in and pays in seconds.">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2308090A'/%3E%3Cpath d='M5 10c5-4 8 4 13 0s6-2 9 0M5 16c5-4 8 4 13 0s6-2 9 0M5 22c5-4 8 4 13 0s6-2 9 0' fill='none' stroke='%23F4F5F6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>Fabrika</title>
@@ -219,7 +219,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     <div class="hero-grid">
       <div>
         <h1 id="h1">Get paid with a link.</h1>
-        <p class="lede" id="lede">Ask for money, send the link, and watch it turn Paid. Runs on Monad testnet with free test MON.</p>
+        <p class="lede" id="lede">Ask for money, send the link, and watch it turn Paid. No app to install. Sign in with Google.</p>
 
         <!-- Sample slip (home) -->
         <div class="slip" id="slip" data-paid="0" aria-label="Example payment request">
@@ -237,7 +237,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
           <div class="slip-note" id="lNote"></div>
           <div class="slip-to">Pay to<br><code id="lTo"></code></div>
           <div data-stitch></div>
-          <button class="btn" id="payBtn" type="button">Connect wallet to pay</button>
+          <button class="btn" id="payBtn" type="button">Sign in to pay</button>
           <button class="btn ghost" id="cancelBtn" type="button" hidden>Cancel request</button>
           <p class="msg" id="lMsg" role="status" aria-live="polite"></p>
           <div id="receipt" hidden>
@@ -255,23 +255,23 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 
       <div class="panel" id="panel">
         <div id="viewOut">
-          <h2>Connect your wallet</h2>
-          <p>Use the wallet you already have. Fabrika never holds your funds.</p>
-          <button class="btn" id="connect" type="button">Connect wallet</button>
+          <h2>Sign in to start</h2>
+          <p>Use Google or email, or a wallet you already have. Fabrika never holds your money.</p>
+          <button class="btn" id="connect" type="button">Sign in</button>
           <p class="err" id="err" role="alert"></p>
           <button class="linkbtn" id="moreWallets" type="button" hidden>Use another wallet</button>
         </div>
 
         <div id="viewIn" class="who" hidden>
-          <div><h2>You are connected</h2></div>
+          <div><h2>You are signed in</h2></div>
           <div class="addr">
             <code id="addr">0x0000</code>
             <button class="copy" id="copyAddr" type="button">Copy</button>
           </div>
           <div class="bal"><span class="n" id="bal">0.0000</span><span class="u">MON</span></div>
-          <p class="note warn" id="wrong" hidden>Your wallet is on another network. Switch to send and receive test MON.</p>
-          <button class="btn" id="switch" type="button" hidden>Switch to Monad testnet</button>
-          <p class="note" id="low" hidden>Your balance is empty. Get free test MON at the <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Monad faucet</a>.</p>
+          <p class="note warn" id="wrong" hidden>Your account is on another network. Switch to continue.</p>
+          <button class="btn" id="switch" type="button" hidden>Switch network</button>
+          <p class="note" id="low" hidden>Your balance is empty. Open the Test funds tab to get free test MON.</p>
           <div class="row">
             <button class="btn" id="goReq" type="button">Request payment</button>
             <button class="btn ghost" id="goSend" type="button">Send MON</button>
@@ -302,7 +302,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 
     <div class="pane" id="paneRequest" role="tabpanel">
       <h2>Ask for a payment</h2>
-      <p>Money comes to your connected address. Fabrika makes a link you can send in any chat.</p>
+      <p>Money goes to your account. Fabrika makes a link you can send in any chat.</p>
       <div class="field"><label for="reqAmt">Amount</label><div class="unit"><input type="text" id="reqAmt" inputmode="decimal" placeholder="2.5" autocomplete="off"><span>MON</span></div></div>
       <div class="field"><label for="reqNote">What is it for?</label><input type="text" id="reqNote" maxlength="60" placeholder="Jollof and drinks, Friday" autocomplete="off"></div>
       <div class="field" id="expField" hidden><label for="reqExp">Expires</label><select id="reqExp"><option value="0">Never</option><option value="3600">In 1 hour</option><option value="86400" selected>In 24 hours</option><option value="604800">In 7 days</option></select></div>
@@ -353,8 +353,8 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     <h2>One link from request to paid</h2>
     <ol class="steps">
       <li><h3>Request</h3><p>Enter an amount and a short note. Fabrika makes a payment link.</p></li>
-      <li><h3>Share</h3><p>Send the link in chat. Your friend opens it and approves the payment in their wallet.</p></li>
-      <li><h3>Paid</h3><p>Fabrika checks the transaction on Monad and marks the request Paid with its transaction hash.</p></li>
+      <li><h3>Share</h3><p>Send the link in chat. Your friend opens it, signs in and pays.</p></li>
+      <li><h3>Paid</h3><p>Fabrika confirms the payment and marks the request Paid.</p></li>
     </ol>
   </section>
   <footer>
@@ -365,7 +365,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="wallets" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="wTitle">
-    <div class="sheet-head"><h2 id="wTitle">Connect a wallet</h2><button class="copy" id="wClose" type="button">Close</button></div>
+    <div class="sheet-head"><h2 id="wTitle">Sign in</h2><button class="copy" id="wClose" type="button">Close</button></div>
     <div id="wBody"></div>
   </div>
 </div>
@@ -647,13 +647,13 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     $('err').textContent = '';
     var p = eth();
     if (!p) { $('err').textContent = 'No wallet found. Open this page in your wallet app’s browser (MetaMask, Rabby or Phantom), or install a wallet extension.'; return false; }
-    var btn = $('connect'); btn.disabled = true; btn.textContent = 'Waiting for wallet…';
+    var btn = $('connect'); btn.disabled = true; btn.textContent = 'Signing in…';
     try {
       var accts;
       try { accts = await p.request({ method: 'eth_requestAccounts' }); }
       catch (e) {
         var code = e && e.code, why = e && (e.message || e.code) ? String(e.message || e.code).slice(0, 120) : 'unknown error';
-        $('err').textContent = code === 4001 ? 'Connection was cancelled. Press Connect wallet to try again.'
+        $('err').textContent = code === 4001 ? 'Connection was cancelled. Press Sign in to try again.'
           : code === -32002 ? 'Your wallet already has a request open. Open your wallet, approve or reject it, then try again.'
           : 'Wallet said: ' + why;
         return false;
@@ -666,7 +666,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
         if (state.chainId && state.chainId.toLowerCase() !== CHAIN.chainId) await switchNet();
       } catch (e) { await refresh(); toast('Connected. Could not read the network, try Switch to Monad testnet.'); }
       return true;
-    } finally { btn.disabled = false; btn.textContent = 'Connect wallet'; }
+    } finally { btn.disabled = false; btn.textContent = 'Sign in'; }
   }
   async function switchNet() {
     var p = eth(); if (!p) return;
@@ -763,7 +763,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   function updatePayBtn() {
     var b = $('payBtn'); if (b.dataset.locked === '1') return;
     var r = state.req || state.creq; if (!r) return;
-    b.textContent = state.account ? 'Pay ' + r.amt + ' MON' : 'Connect wallet to pay';
+    b.textContent = state.account ? 'Pay ' + r.amt + ' MON' : 'Sign in to pay';
     showCancel();
   }
   function markPaid(info) {
@@ -997,7 +997,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     var h = histLoad();
     return [
       { t: 'Sign in or connect a wallet', d: 'Use Google, email or the wallet you already have.', done: !!state.account, fn: connect, label: 'Sign in' },
-      { t: 'Get test funds', d: 'Test MON is free and has no value. Claim some from the Monad faucet.', done: state.bal > 0n, tab: 'funds' },
+      { t: 'Get test funds', d: 'Test MON is free. Tap Go and request some.', done: state.bal > 0n, tab: 'funds' },
       { t: 'Create a payment request', d: 'Enter an amount and a note to get a link you can share.', done: h.some(function (x) { return x.k === 'req'; }), tab: 'request' },
       { t: 'Pay a request or send MON', d: 'Open a payment link, or send test MON to any address.', done: h.some(function (x) { return x.k === 'pay' || x.k === 'send'; }), tab: 'send' },
       { t: 'See a request turn Paid', d: 'Watch the stitch close when the payment lands on Monad.', done: h.some(function (x) { return x.k === 'req' && x.st === 'paid'; }), tab: 'history' }
