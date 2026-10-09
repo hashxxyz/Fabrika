@@ -139,6 +139,40 @@ select { font: 400 17px/1.3 var(--font); color: var(--ink); background: var(--bg
 .hist .links a, .hist .links button { color: var(--ink); background: none; border: 0; padding: 0; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .empty { color: var(--ink-2); max-width: 44ch; }
 
+/* Getting started */
+.start { border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px 8px; margin-bottom: 28px; background: var(--surface); }
+.start-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.start h2 { font: 400 22px/1.2 var(--font); letter-spacing: -.02em; margin: 0 0 4px; }
+.start-head p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.start .stitch { margin: 14px 0 6px; }
+.start-list { list-style: none; margin: 0; padding: 0; }
+.start-list li { display: grid; grid-template-columns: 32px 1fr auto; gap: 4px 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+.start-list .mk { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--ink-2); display: grid; place-items: center; font: 500 14px/1 var(--font); color: var(--ink-2); }
+.start-list li[data-done="1"] .mk { background: var(--green); border-color: var(--green); color: var(--bg); }
+.start-list .st { font-weight: 500; }
+.start-list .sd { color: var(--ink-2); font-size: 14.5px; margin-top: 2px; }
+.start-list li[data-done="1"] .st { color: var(--ink-2); }
+.start-list .tag { font-size: 14px; color: var(--green); font-weight: 500; }
+.start-list .go { font: 500 14px/1 var(--font); color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.start-list .go:hover, .start-list .go:focus-visible { border-color: var(--ink); outline: none; }
+@media (max-width: 520px) { .start-list li { grid-template-columns: 32px 1fr; } .start-list .act { grid-column: 2; justify-self: start; margin-top: 6px; } }
+
+/* Wallet picker */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+@media (min-width: 600px) { .modal { align-items: center; padding: 20px; } }
+.sheet { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 22px 22px 0 0; width: 100%; max-width: 440px; max-height: 88vh; overflow: auto; padding: 22px; padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 600px) { .sheet { border-radius: 22px; } }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.sheet h2 { font: 400 22px/1.2 var(--font); margin: 0; letter-spacing: -.02em; }
+.wgroup { margin-top: 18px; display: grid; gap: 8px; }
+.wgroup h3 { font: 500 14px/1.2 var(--font); color: var(--ink-2); margin: 0 0 2px; }
+.wopt { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: 500 16px/1.2 var(--font); cursor: pointer; text-decoration: none; }
+.wopt:focus-visible, .wopt:hover { border-color: var(--ink); outline: none; }
+.wopt small { display: block; font: 400 13.5px/1.3 var(--font); color: var(--ink-2); margin-top: 2px; }
+.wopt .ic { width: 36px; height: 36px; border-radius: 10px; flex: none; display: grid; place-items: center; background: var(--bg); border: 1px solid var(--line); font: 500 16px/1 var(--font); overflow: hidden; }
+.wopt .ic img { width: 100%; height: 100%; display: block; }
+.wopt .tx2 { min-width: 0; }
+
 /* Flow */
 section.flow { padding-block: 72px; }
 section.flow h2 { font: 300 clamp(30px, 4.6vw, 44px)/1.08 var(--font); letter-spacing: -.035em; margin: 0 0 32px; max-width: 18ch; text-wrap: balance; }
@@ -237,6 +271,14 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 
 <div class="wrap">
   <section class="app" id="app" hidden>
+    <div class="start" id="start">
+      <div class="start-head">
+        <div><h2>Getting started</h2><p id="startSub">Five steps. Each one takes a minute.</p></div>
+        <button class="copy" id="startHide" type="button">Hide</button>
+      </div>
+      <div data-stitch id="startBar"></div>
+      <ol class="start-list" id="startList"></ol>
+    </div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tabRequest" aria-selected="true" data-tab="request" type="button">Request</button>
       <button class="tab" role="tab" id="tabSend" aria-selected="false" data-tab="send" type="button">Send</button>
@@ -297,6 +339,12 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   </footer>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal" id="wallets" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="wTitle">
+    <div class="sheet-head"><h2 id="wTitle">Connect a wallet</h2><button class="copy" id="wClose" type="button">Close</button></div>
+    <div id="wBody"></div>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -366,6 +414,8 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
 
   // Paste the deployed FabrikaPay address here (0x…). Leave empty to use the no-contract mode.
   var CONTRACT = '';
+  // WalletConnect project ID from https://dashboard.reown.com (free). Leave empty to hide WalletConnect.
+  var WC_PROJECT_ID = '6fe4af6a7d839eb20a89d49725fdd194';
   var CHAIN = {
     chainId: '0x279f',
     chainName: 'Monad Testnet',
@@ -374,8 +424,8 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     blockExplorerUrls: ['https://testnet.monadvision.com']
   };
   var RPCS = ['https://testnet-rpc.monad.xyz', 'https://rpc.ankr.com/monad_testnet', 'https://rpc-testnet.monadinfra.com'];
-  var state = { account: null, chainId: null, req: null, busy: false };
-  function eth() { return window.ethereum || null; }
+  var state = { account: null, chainId: null, req: null, busy: false, prov: null, bal: 0n };
+  function eth() { return state.prov || null; }
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, 2000); }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function appUrl(tok) { return location.href.split('#')[0] + '#' + tok; }
@@ -510,6 +560,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
       if (links.childNodes.length) li.appendChild(links);
       ul.appendChild(li);
     });
+    renderStart();
   }
 
   // ---------- Helpers ----------
@@ -542,7 +593,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     var onChain = state.chainId && state.chainId.toLowerCase() === CHAIN.chainId;
     var net = $('net');
     $('app').hidden = !state.account;
-    updatePayBtn();
+    updatePayBtn(); renderStart();
     if (!state.account) {
       net.dataset.state = 'idle'; $('netText').textContent = 'Monad testnet';
       $('viewOut').hidden = false; $('viewIn').hidden = true; return;
@@ -554,30 +605,38 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     $('wrong').hidden = !!onChain; $('switch').hidden = !!onChain;
     try {
       var w = await rpc('eth_getBalance', [state.account, 'latest']);
-      $('bal').textContent = fmt(w);
+      $('bal').textContent = fmt(w); state.bal = BigInt(w); renderStart();
       $('low').hidden = BigInt(w) > 0n;
     } catch (e) { $('bal').textContent = 'n/a'; $('low').hidden = true; }
   }
   async function sync() {
     var p = eth(); if (!p) return;
-    state.chainId = await p.request({ method: 'eth_chainId' });
+    state.chainId = normChain(await p.request({ method: 'eth_chainId' }));
     await refresh();
   }
-  async function connect() {
+  async function doConnect() {
     $('err').textContent = '';
     var p = eth();
     if (!p) { $('err').textContent = 'No wallet found. Open this page in your wallet app’s browser (MetaMask, Rabby or Phantom), or install a wallet extension.'; return false; }
     var btn = $('connect'); btn.disabled = true; btn.textContent = 'Waiting for wallet…';
     try {
-      var accts = await p.request({ method: 'eth_requestAccounts' });
-      state.account = accts[0] || null;
+      var accts;
+      try { accts = await p.request({ method: 'eth_requestAccounts' }); }
+      catch (e) {
+        var code = e && e.code, why = e && (e.message || e.code) ? String(e.message || e.code).slice(0, 120) : 'unknown error';
+        $('err').textContent = code === 4001 ? 'Connection was cancelled. Press Connect wallet to try again.'
+          : code === -32002 ? 'Your wallet already has a request open. Open your wallet, approve or reject it, then try again.'
+          : 'Wallet said: ' + why;
+        return false;
+      }
+      if (!accts || !accts[0]) { $('err').textContent = 'Your wallet returned no account. Unlock it, pick an account and try again.'; return false; }
+      state.account = accts[0];
       try { localStorage.removeItem('fabrika.off'); } catch (e) {}
-      await sync();
-      if (state.chainId && state.chainId.toLowerCase() !== CHAIN.chainId) await switchNet();
-      return !!state.account;
-    } catch (e) {
-      $('err').textContent = e && e.code === 4001 ? 'Connection was cancelled. Press Connect wallet to try again.' : 'Could not connect. Unlock your wallet and try again.';
-      return false;
+      try {
+        await sync();
+        if (state.chainId && state.chainId.toLowerCase() !== CHAIN.chainId) await switchNet();
+      } catch (e) { await refresh(); toast('Connected. Could not read the network, try Switch to Monad testnet.'); }
+      return true;
     } finally { btn.disabled = false; btn.textContent = 'Connect wallet'; }
   }
   async function switchNet() {
@@ -896,6 +955,38 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   }
   setInterval(function () { if (CM && state.creq && state.creq.status === 1 && !document.hidden && !state.busy) loadC(state.creq.id, true); }, 5000);
 
+  // ---------- Getting started ----------
+  function startSteps() {
+    var h = histLoad();
+    return [
+      { t: 'Connect your wallet', d: 'Use the wallet you already have.', done: !!state.account },
+      { t: 'Get test funds', d: 'Test MON is free and has no value. Claim some from the Monad faucet.', done: state.bal > 0n, href: 'https://faucet.monad.xyz', label: 'Open faucet' },
+      { t: 'Create a payment request', d: 'Enter an amount and a note to get a link you can share.', done: h.some(function (x) { return x.k === 'req'; }), tab: 'request' },
+      { t: 'Pay a request or send MON', d: 'Open a payment link, or send test MON to any address.', done: h.some(function (x) { return x.k === 'pay' || x.k === 'send'; }), tab: 'send' },
+      { t: 'See a request turn Paid', d: 'Watch the stitch close when the payment lands on Monad.', done: h.some(function (x) { return x.k === 'req' && x.st === 'paid'; }), tab: 'history' }
+    ];
+  }
+  function renderStart() {
+    var box = $('start'); if (!box) return;
+    var hide = false; try { hide = localStorage.getItem('fabrika.start.hide') === '1'; } catch (e) {}
+    box.hidden = hide; if (hide) return;
+    var steps = startSteps(), n = steps.filter(function (x) { return x.done; }).length;
+    $('startSub').textContent = n === steps.length ? 'All five steps done. You are set.' : n + ' of ' + steps.length + ' done. Each step takes a minute.';
+    var bar = $('startBar').querySelector('.done'); if (bar) bar.style.strokeDashoffset = String(100 - Math.round(n / steps.length * 100));
+    var ol = $('startList'); ol.innerHTML = '';
+    steps.forEach(function (x, i) {
+      var li = mk('li'); li.dataset.done = x.done ? '1' : '0';
+      li.appendChild(mk('span', 'mk', x.done ? '✓' : String(i + 1)));
+      var body = mk('div'); body.appendChild(mk('div', 'st', x.t)); body.appendChild(mk('div', 'sd', x.d)); li.appendChild(body);
+      var act = mk('div', 'act');
+      if (x.done) act.appendChild(mk('span', 'tag', 'Done'));
+      else if (x.href) { var a = mk('a', 'go', x.label || 'Go'); a.href = x.href; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a); }
+      else if (x.tab) { var b = mk('button', 'go', 'Go'); b.type = 'button'; b.addEventListener('click', function () { goTab(x.tab); }); act.appendChild(b); }
+      li.appendChild(act); ol.appendChild(li);
+    });
+  }
+  $('startHide').addEventListener('click', function () { try { localStorage.setItem('fabrika.start.hide', '1'); } catch (e) {} $('start').hidden = true; });
+
   // ---------- Tabs ----------
   function setTab(name) {
     ['request', 'send', 'history'].forEach(function (t) {
@@ -907,10 +998,108 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   }
   function goTab(name) { setTab(name); $('app').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }
 
+  // ---------- Wallet picker ----------
+  function normChain(c) { return typeof c === 'number' ? '0x' + c.toString(16) : String(c); }
+  var found = {};
+  window.addEventListener('eip6963:announceProvider', function (e) { if (e && e.detail && e.detail.info && e.detail.provider) found[e.detail.info.rdns || e.detail.info.name] = e.detail; });
+  function askWallets() { try { window.dispatchEvent(new Event('eip6963:requestProvider')); } catch (e) {} }
+  askWallets();
+  function guessName(p) { return p.isRabby ? 'Rabby' : p.isPhantom ? 'Phantom' : p.isCoinbaseWallet ? 'Coinbase Wallet' : p.isTrust || p.isTrustWallet ? 'Trust Wallet' : p.isMetaMask ? 'MetaMask' : 'Browser wallet'; }
+  function icon(name, src) {
+    var ic = mk('span', 'ic');
+    if (src && /^data:image\//.test(src)) { var im = document.createElement('img'); im.alt = ''; im.src = src; ic.appendChild(im); } else ic.textContent = name.charAt(0);
+    return ic;
+  }
+  function opt(tag, name, sub, src, fn, href) {
+    var o = document.createElement(tag); o.className = 'wopt';
+    if (tag === 'button') o.type = 'button';
+    if (href) o.href = href;
+    o.appendChild(icon(name, src));
+    var t = mk('span', 'tx2'); t.appendChild(document.createTextNode(name));
+    if (sub) t.appendChild(mk('small', null, sub));
+    o.appendChild(t);
+    if (fn) o.addEventListener('click', fn);
+    return o;
+  }
+  function group(title) { var g = mk('div', 'wgroup'); g.appendChild(mk('h3', null, title)); return g; }
+  function here() { return location.href; }
+  function renderWallets() {
+    askWallets();
+    var body = $('wBody'); body.innerHTML = '';
+    var list = Object.keys(found).map(function (k) { return found[k]; });
+    var inj = window.ethereum;
+    if (inj && !list.some(function (w) { return w.provider === inj; })) list.push({ info: { name: guessName(inj), icon: '', rdns: 'injected' }, provider: inj });
+    if (list.length) {
+      var g1 = group('Detected on this device');
+      list.forEach(function (w) { g1.appendChild(opt('button', w.info.name, 'Connect with this wallet', w.info.icon, function () { pick(w); })); });
+      body.appendChild(g1);
+    }
+    if (WC_PROJECT_ID) {
+      var g2 = group(list.length ? 'Other wallets' : 'Connect from this browser');
+      g2.appendChild(opt('button', 'WalletConnect', 'Scan a QR code or pick a wallet app. Your wallet needs Monad testnet added.', '', pickWC));
+      body.appendChild(g2);
+    }
+    if (!list.length) {
+      var u = encodeURIComponent(here()), bare = location.host + location.pathname + location.search + location.hash;
+      var g3 = group('Open this page inside a wallet app');
+      g3.appendChild(opt('a', 'MetaMask', 'Opens Fabrika in the MetaMask browser', '', null, 'https://metamask.app.link/dapp/' + bare));
+      g3.appendChild(opt('a', 'Trust Wallet', 'Opens Fabrika in the Trust Wallet browser', '', null, 'https://link.trustwallet.com/open_url?coin_id=60&url=' + u));
+      g3.appendChild(opt('a', 'Coinbase Wallet', 'Opens Fabrika in the Coinbase Wallet browser', '', null, 'https://go.cb-w.com/dapp?cb_url=' + u));
+      g3.appendChild(opt('a', 'Phantom', 'Opens Fabrika in the Phantom browser', '', null, 'https://phantom.app/ul/browse/' + u + '?ref=' + encodeURIComponent(location.origin)));
+      body.appendChild(g3);
+      body.appendChild(mk('p', 'note', 'On a computer, install a wallet extension such as MetaMask or Rabby, then reload this page.'));
+    }
+  }
+  function openWallets() { renderWallets(); $('wallets').hidden = false; var f = $('wBody').querySelector('.wopt'); if (f) f.focus(); }
+  function closeWallets() { $('wallets').hidden = true; }
+  async function connect() { if (state.account) return true; openWallets(); return false; }
+  function bind(p) {
+    if (!p || !p.on || p.__fab) return; p.__fab = true;
+    p.on('accountsChanged', function (a) { if (state.prov !== p) return; state.account = a && a[0] || null; sync(); });
+    p.on('chainChanged', function (c) { if (state.prov !== p) return; state.chainId = normChain(c); refresh(); });
+    p.on('disconnect', function () { if (state.prov !== p) return; state.account = null; refresh(); });
+  }
+  function pick(w) {
+    closeWallets(); state.prov = w.provider; bind(w.provider);
+    try { localStorage.setItem('fabrika.wallet', w.info.rdns || 'injected'); } catch (e) {}
+    doConnect();
+  }
+  var WC_SRC = 'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/dist/index.umd.js';
+  function loadWC() {
+    return new Promise(function (ok, no) {
+      if (window['@walletconnect/ethereum-provider']) return ok();
+      var sc = document.createElement('script'); sc.src = WC_SRC; sc.onload = function () { ok(); }; sc.onerror = function () { no(new Error('Could not load WalletConnect')); };
+      document.head.appendChild(sc);
+    });
+  }
+  function wcConfig() { return { projectId: WC_PROJECT_ID, optionalChains: [10143], rpcMap: { 10143: RPCS[0] }, showQrModal: true, metadata: { name: 'Fabrika', description: 'Pay and get paid with a link on Monad', url: location.origin, icons: [] } }; }
+  async function pickWC() {
+    closeWallets(); $('err').textContent = ''; toast('Opening WalletConnect…');
+    try {
+      await loadWC();
+      var prov = await window['@walletconnect/ethereum-provider'].EthereumProvider.init(wcConfig());
+      if (!prov.session) await prov.connect();
+      state.prov = prov; bind(prov);
+      try { localStorage.setItem('fabrika.wallet', 'wc'); } catch (e) {}
+      await doConnect();
+    } catch (e) {
+      $('err').textContent = 'WalletConnect did not connect' + (e && e.message ? ': ' + String(e.message).slice(0, 100) : '.');
+    }
+  }
+  $('wClose').addEventListener('click', closeWallets);
+  $('wallets').addEventListener('click', function (e) { if (e.target === $('wallets')) closeWallets(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('wallets').hidden) closeWallets(); });
+
   // ---------- Wire up ----------
   $('connect').addEventListener('click', connect);
   $('switch').addEventListener('click', switchNet);
-  $('disconnect').addEventListener('click', function () { state.account = null; try { localStorage.setItem('fabrika.off', '1'); } catch (e) {} refresh(); toast('Disconnected from Fabrika'); });
+  $('disconnect').addEventListener('click', async function () {
+    var p = state.prov;
+    try { if (p && typeof p.disconnect === 'function') await p.disconnect(); } catch (e) {}
+    state.account = null; state.prov = null;
+    try { localStorage.setItem('fabrika.off', '1'); localStorage.removeItem('fabrika.wallet'); } catch (e) {}
+    refresh(); toast('Disconnected from Fabrika');
+  });
   $('copyAddr').addEventListener('click', function () { if (state.account) copyText(state.account); });
   $('goReq').addEventListener('click', function () { goTab('request'); });
   $('goSend').addEventListener('click', function () { goTab('send'); });
@@ -933,11 +1122,6 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   $('home').addEventListener('click', function (e) { e.preventDefault(); history.pushState('', document.title, location.href.split('#')[0]); route(); });
   window.addEventListener('hashchange', route);
 
-  var p = eth();
-  if (p && p.on) {
-    p.on('accountsChanged', function (a) { state.account = a[0] || null; sync(); });
-    p.on('chainChanged', function (c) { state.chainId = c; refresh(); });
-  }
   if (CM) {
     $('expField').hidden = false;
     $('reqHelp').textContent = 'Anyone with the link can pay it once, before it expires. The slip turns Paid on its own when the payment lands on Monad.';
@@ -945,10 +1129,18 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   }
   route(); renderHist();
   (async function auto() {
+    var off = false, saved = '';
+    try { off = localStorage.getItem('fabrika.off') === '1'; saved = localStorage.getItem('fabrika.wallet') || ''; } catch (e) {}
+    if (off || !saved) return;
+    askWallets(); await sleep(250);
+    var p = null;
+    if (saved === 'wc') {
+      if (!WC_PROJECT_ID) return;
+      try { await loadWC(); var wp = await window['@walletconnect/ethereum-provider'].EthereumProvider.init(wcConfig()); if (wp.session) p = wp; } catch (e) {}
+    } else if (found[saved]) p = found[saved].provider;
+    else if (saved === 'injected' && window.ethereum) p = window.ethereum;
     if (!p) return;
-    var off = false; try { off = localStorage.getItem('fabrika.off') === '1'; } catch (e) {}
-    if (off) return;
-    try { var a = await p.request({ method: 'eth_accounts' }); if (a && a[0]) { state.account = a[0]; await sync(); } } catch (e) {}
+    try { var a = await p.request({ method: 'eth_accounts' }); if (a && a[0]) { state.prov = p; bind(p); state.account = a[0]; await sync(); } } catch (e) {}
   })();
 })();
 </script>
