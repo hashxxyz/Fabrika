@@ -95,10 +95,10 @@ export default function Claim({ acct }) {
     <div className="hero-grid">
       <div>
         <h1>{paid ? 'It is yours.' : 'Someone paid you.'}</h1>
-        <p className="lede">{isX ? 'Sign in, link your X account, and the vault sends the MON to your wallet.' : 'Sign in, confirm your Telegram username, and the vault sends the MON to your wallet.'}</p>
+        <p className="lede">{isX ? 'Sign in, link your X account, and the money arrives in your account. You pay no fees.' : 'Sign in, confirm your Telegram username, and the money arrives in your account. You pay no fees.'}</p>
       </div>
       <div className="slip" data-paid={paid ? '1' : '0'}>
-        {loadErr ? <p className="err">{loadErr}</p> : !info ? <p className="note">Checking the vault…</p> : (
+        {loadErr ? <p className="err">{loadErr}</p> : !info ? <p className="note">Checking the payment…</p> : (
           <>
             <div className="slip-top"><span>Payout waiting</span><Badge>{paid ? 'Claimed' : STATUS[info.status]}</Badge></div>
             <div className="slip-amt">{fmtMon(info.amount)}<small>MON</small></div>

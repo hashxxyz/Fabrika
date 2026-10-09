@@ -1,35 +1,34 @@
 import { copyText } from './ui.jsx';
-import { FAUCET, VAULT, explorer } from './chain.js';
+import { FAUCET, explorer } from './chain.js';
 import { fmtMon, shortAddr, loadTransfers } from './lib.js';
 import { Link } from './router.jsx';
 import Batches from './Batches.jsx';
+import Invoices from './Invoices.jsx';
 import Gate from './Gate.jsx';
 
 export default function Account({ acct, toast }) {
   return (
     <Gate acct={acct} title="Account">
-      <section className="page">
-        <div className="wallet">
-          <div>
-            <div className="k">{acct.label || 'Your wallet'}</div>
-            <div className="addr-row">
-              <code>{shortAddr(acct.address)}</code>
-              <button className="copy" type="button" onClick={() => copyText(acct.address, toast)}>Copy address</button>
-            </div>
+      <section className="col">
+        <h1 className="title">Account</h1>
+        <div className="balcard">
+          <div className="k">{acct.label || 'Your account'}</div>
+          <div className="big"><span>{acct.balance == null ? '…' : fmtMon(acct.balance)}</span><small>MON</small></div>
+          <div className="addr">
+            <code>{shortAddr(acct.address)}</code>
+            <button className="copy" type="button" onClick={() => copyText(acct.address, toast)}>Copy address</button>
           </div>
-          <div className="bal"><span className="n">{acct.balance == null ? '…' : fmtMon(acct.balance)}</span><span className="u">MON</span></div>
+        </div>
+        <div className="actions">
+          <Link className="btn" to="/transfer">Send money</Link>
+          <a className="btn ghost" href={explorer.address(acct.address)} target="_blank" rel="noopener">View on explorer</a>
         </div>
         {acct.balance === 0n && (
-          <p className="note warn">Your balance is empty. Get free test MON from the <a href={FAUCET} target="_blank" rel="noopener">faucet</a>, sent to the address above.</p>
+          <p className="callout warn">Your balance is empty. Get free test MON from the <a href={FAUCET} target="_blank" rel="noopener">faucet</a> and paste the address above.</p>
         )}
-        <p className="note">
-          <a href={explorer.address(acct.address)} target="_blank" rel="noopener">View on explorer</a>
-          {' · '}<Link to="/transfer">Send money</Link>
-        </p>
-
-        <div className="block"><Batches acct={acct} toast={toast} /></div>
+        <Invoices acct={acct} toast={toast} />
+        <Batches acct={acct} toast={toast} />
         <Transfers address={acct.address} />
-        {VAULT && <p className="note" style={{ marginTop: 28 }}>Vault: <a href={explorer.address(VAULT)} target="_blank" rel="noopener">{shortAddr(VAULT)}</a></p>}
       </section>
     </Gate>
   );
@@ -39,18 +38,17 @@ function Transfers({ address }) {
   const list = loadTransfers(address);
   if (!list.length) return null;
   return (
-    <div className="pane wide block">
-      <h2>Wallet transfers</h2>
-      <p>Direct sends from this device.</p>
-      <ul className="hist">
+    <div className="card">
+      <h3>Wallet transfers</h3>
+      <div>
         {list.map((t) => (
-          <li key={t.hash}>
+          <div className="act" key={t.hash}>
             <span className="t">{shortAddr(t.to)}</span>
             <span className="a">{fmtMon(BigInt(t.amount))} MON</span>
-            <span className="links"><a href={explorer.tx(t.hash)} target="_blank" rel="noopener">Transaction</a></span>
-          </li>
+            <span className="s"><a href={explorer.tx(t.hash)} target="_blank" rel="noopener">Receipt</a></span>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

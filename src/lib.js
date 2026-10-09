@@ -71,6 +71,39 @@ export const loadTransfers = (addr) => { try { return JSON.parse(localStorage.ge
 export const saveTransfer = (addr, t) => {
   try { localStorage.setItem(tkey(addr), JSON.stringify([t, ...loadTransfers(addr)].slice(0, 50))); } catch { /* storage full or blocked */ }
 };
-export const clearLocalData = (addr) => {
-  try { localStorage.removeItem(key(addr)); localStorage.removeItem(tkey(addr)); } catch { /* ignore */ }
+// Invoices created on this device.
+const ikey = (addr) => `fabrika.invoices.${String(addr).toLowerCase()}`;
+export const loadInvoices = (addr) => { try { return JSON.parse(localStorage.getItem(ikey(addr)) || '[]'); } catch { return []; } };
+export const saveInvoice = (addr, inv) => {
+  try { localStorage.setItem(ikey(addr), JSON.stringify([inv, ...loadInvoices(addr)].slice(0, 50))); } catch { /* storage full or blocked */ }
 };
+export const payUrl = (id) => `${location.origin}/pay?i=${id}`;
+export const clearLocalData = (addr) => {
+  try { localStorage.removeItem(key(addr)); localStorage.removeItem(tkey(addr)); localStorage.removeItem(ikey(addr)); } catch { /* ignore */ }
+};
+
+// Newest-first mix of payouts and direct transfers for the Home and Account pages.
+export function recentActivity(addr, limit = 5) {
+  const pay = loadBatches(addr).flatMap((b) => b.items.map((it) => ({
+    key: it.id, title: `@${it.handle}`, tag: (KINDS[it.kind || 'telegram'] || KINDS.telegram).label, amount: BigInt(it.amount), at: b.createdAt,
+  })));
+  const tr = loadTransfers(addr).map((t) => ({ key: t.hash, title: shortAddr(t.to), tag: 'Wallet', amount: BigInt(t.amount), at: t.at }));
+  const inv = loadInvoices(addr).map((i) => ({ key: i.id, title: i.note || 'Invoice', tag: 'Invoice', amount: BigInt(i.amount), at: i.createdAt }));
+  return [...pay, ...tr, ...inv].sort((a, b) => b.at - a.at).slice(0, limit);
+}
+
+// Merge items fetched from the server into this device's list. Returns how many were new.
+export function mergeLocal(addr, what, items) {
+  const cfg = {
+    batches: { key: key(addr), id: (x) => x.batchId, at: (x) => x.createdAt, load: loadBatches },
+    transfers: { key: tkey(addr), id: (x) => x.hash, at: (x) => x.at, load: loadTransfers },
+    invoices: { key: ikey(addr), id: (x) => x.id, at: (x) => x.createdAt, load: loadInvoices },
+  }[what];
+  const have = cfg.load(addr);
+  const seen = new Set(have.map(cfg.id));
+  const fresh = items.filter((x) => x && !seen.has(cfg.id(x)));
+  if (!fresh.length) return 0;
+  const all = [...have, ...fresh].sort((a, b) => cfg.at(b) - cfg.at(a)).slice(0, 50);
+  try { localStorage.setItem(cfg.key, JSON.stringify(all)); } catch { /* storage full or blocked */ }
+  return fresh.length;
+}

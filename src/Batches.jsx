@@ -44,13 +44,13 @@ export default function Batches({ acct, toast }) {
   }
 
   if (!batches.length) {
-    return <div className="pane"><h2>Payouts</h2><p className="empty">No payouts from this device yet. Make one on the Transfer page and it shows up here with live status from the vault.</p></div>;
+    return <div className="card"><h3>Payments to usernames</h3><p className="note" style={{ margin: 0 }}>Nothing yet. Pay someone by Telegram or X username and it shows up here with its live status.</p></div>;
   }
 
   return (
-    <div className="pane wide">
-      <div className="head-row"><h2>Payouts</h2><button className="copy" type="button" onClick={load} disabled={loading}>{loading ? 'Checking…' : 'Refresh'}</button></div>
-      <p>Status comes from the vault on Monad. Names are saved on this device only.</p>
+    <div className="card">
+      <div className="card-head"><h3>Payments to usernames</h3><button className="copy" type="button" onClick={load} disabled={loading}>{loading ? 'Checking…' : 'Refresh'}</button></div>
+      <p className="note" style={{ margin: 0 }}>Live status from Monad. Names are saved on this device only.</p>
       {batches.map((b) => {
         const total = b.items.reduce((s, it) => s + BigInt(it.amount), 0n);
         const claimed = b.items.filter((it) => status[it.id] === 2).length;

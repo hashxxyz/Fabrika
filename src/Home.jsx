@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Stitch, Badge } from './ui.jsx';
 import { Link } from './router.jsx';
-import { fmtMon, shortAddr, loadBatches, KINDS } from './lib.js';
+import { fmtMon, shortAddr, recentActivity } from './lib.js';
+import { FAUCET } from './chain.js';
 
 const SAMPLE = [['@ada', '2.5', 'Telegram'], ['@tunde', '1', 'X'], ['0x4f3a…91c2', '0.5', 'Wallet']];
 
@@ -21,12 +22,16 @@ function Landing({ acct }) {
     <div className="hero-grid">
       <div>
         <h1>Pay anyone. Just a name.</h1>
-        <p className="lede">Send MON to a Telegram username, an X username or a wallet address. Names are locked until the person signs in and claims. If they never do, you take it back.</p>
-        <button className="btn" type="button" onClick={acct.login} disabled={!acct.ready} style={{ maxWidth: 320 }}>Sign in to start</button>
-        <p className="note" style={{ marginTop: 12 }}>Email, Google, X or a wallet you already have. Fabrika never holds your money. The vault contract does.</p>
+        <p className="lede">Send money to a Telegram or X username, or a wallet. They sign in with email, Google or X and it lands in their account. No app to install, no fees for them.</p>
+        <button className="btn" type="button" onClick={acct.login} disabled={!acct.ready} style={{ maxWidth: 320 }}>Get started</button>
+        <div className="chips">
+          <span className="chip">Fast on Monad</span>
+          <span className="chip">No fees to claim</span>
+          <span className="chip">Unclaimed money comes back</span>
+        </div>
       </div>
       <div className="slip" data-paid={done === SAMPLE.length ? '1' : '0'} aria-label="Example payout">
-        <div className="slip-top"><span>Payout to 3 people</span><Badge>{done === SAMPLE.length ? 'All received' : `${done} of 3 received`}</Badge></div>
+        <div className="slip-top"><span>Payment to 3 people</span><Badge>{done === SAMPLE.length ? 'All received' : `${done} of 3 received`}</Badge></div>
         <div className="slip-amt">4.00<small>MON</small></div>
         <ul className="mini">
           {SAMPLE.map(([h, a, k], i) => (
@@ -34,42 +39,37 @@ function Landing({ acct }) {
           ))}
         </ul>
         <Stitch />
-        <div className="slip-foot"><span>Example payout</span><span>Refundable after expiry</span></div>
+        <div className="slip-foot"><span>Example</span><span>Refundable after expiry</span></div>
       </div>
     </div>
   );
 }
 
 function Overview({ acct }) {
-  const recent = loadBatches(acct.address || '').flatMap((b) => b.items).slice(0, 4);
+  const recent = acct.address ? recentActivity(acct.address, 5) : [];
   return (
-    <section className="page">
-      <div className="pane wide">
-        <h2>Welcome back</h2>
-        <div className="wallet">
-          <div>
-            <div className="k">Balance</div>
-            <div className="bal"><span className="n">{acct.balance == null ? '…' : fmtMon(acct.balance)}</span><span className="u">MON</span></div>
-          </div>
-          <div className="k">{acct.address ? shortAddr(acct.address) : 'Setting up your wallet…'}</div>
-        </div>
-        <div className="row">
-          <Link className="btn" to="/transfer">Send money</Link>
-          <Link className="btn ghost" to="/account">Account and payouts</Link>
-        </div>
-        {recent.length > 0 && (
-          <>
-            <p className="k" style={{ marginTop: 14 }}>Recent</p>
-            <ul className="hist">
-              {recent.map((it) => (
-                <li key={it.id}>
-                  <span className="t">@{it.handle} <em className="tag">{KINDS[it.kind || 'telegram'].label}</em></span>
-                  <span className="a">{fmtMon(BigInt(it.amount))} MON</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+    <section className="col">
+      <div className="balcard">
+        <div className="k">Your balance</div>
+        <div className="big"><span>{acct.balance == null ? '…' : fmtMon(acct.balance)}</span><small>MON</small></div>
+        <div className="addr">{acct.address ? shortAddr(acct.address) : 'Setting up your account…'}</div>
+      </div>
+      <div className="actions">
+        <Link className="btn" to="/transfer">Send money</Link>
+        <Link className="btn ghost" to="/invoice">Create invoice</Link>
+      </div>
+      <p className="note" style={{ margin: 0 }}>Need test MON? <a href={FAUCET} target="_blank" rel="noopener">Get some free</a>.</p>
+      <div className="card">
+        <div className="card-head"><h3>Recent activity</h3>{recent.length > 0 && <Link className="copy" to="/account">See all</Link>}</div>
+        {recent.length === 0
+          ? <p className="note" style={{ margin: 0 }}>Nothing yet. Send your first payment and it shows up here.</p>
+          : <div>{recent.map((it) => (
+            <div className="act" key={it.key}>
+              <span className="t">{it.title}</span>
+              <span className="a">{fmtMon(it.amount)} MON</span>
+              <span className="s">{it.tag}</span>
+            </div>
+          ))}</div>}
       </div>
     </section>
   );

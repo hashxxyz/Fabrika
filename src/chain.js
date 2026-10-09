@@ -10,6 +10,7 @@ export const monadTestnet = defineChain({
 
 export const PRIVY_APP_ID = (import.meta.env.VITE_PRIVY_APP_ID || '').trim();
 export const VAULT = (import.meta.env.VITE_VAULT_ADDRESS || '').trim();
+export const PAY = (import.meta.env.VITE_PAY_ADDRESS || '').trim();
 export const BOT = (import.meta.env.VITE_BOT_USERNAME || '').trim().replace(/^@/, '');
 
 export const publicClient = createPublicClient({ chain: monadTestnet, transport: http() });
@@ -30,3 +31,13 @@ export const vaultAbi = parseAbi([
 
 // Matches the Status enum in FabrikaVault.sol
 export const STATUS = ['None', 'Open', 'Claimed', 'Cancelled', 'Refunded', 'Expired'];
+
+// FabrikaPay: invoices (payment requests). Matches the Status enum in FabrikaPay.sol
+export const payAbi = parseAbi([
+  'function createRequest(bytes32 id, uint256 amount, uint64 expiresAt, string note)',
+  'function pay(bytes32 id) payable',
+  'function cancel(bytes32 id)',
+  'function getRequest(bytes32 id) view returns (address recipient, uint256 amount, uint64 expiresAt, uint8 status, address payer, uint64 paidAt, uint64 paidBlock)',
+  'function noteOf(bytes32 id) view returns (string)',
+]);
+export const PAY_STATUS = ['None', 'Open', 'Paid', 'Cancelled', 'Expired'];
