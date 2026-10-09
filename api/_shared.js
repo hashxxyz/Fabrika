@@ -44,7 +44,11 @@ export const relayerClient = () => createWalletClient({ account: relayerAccount(
 
 // Same rule as src/lib.js: trim, drop leading @, lowercase, keccak256 of the UTF-8 bytes.
 export const normalizeHandle = (s) => String(s || '').trim().replace(/^@+/, '').toLowerCase();
-export const tagOf = (handle) => keccak256(toBytes(normalizeHandle(handle)));
+// Telegram tags are the plain hash. X tags are namespaced with "x:" (same rule as src/lib.js).
+export const tagOf = (handle, kind = 'telegram') => {
+  const h = normalizeHandle(handle);
+  return keccak256(toBytes(kind === 'x' ? `x:${h}` : h));
+};
 
 export const ID_RE = /^0x[0-9a-fA-F]{64}$/;
 export const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
@@ -70,6 +74,22 @@ export async function verifyPrivy(req) {
   } catch {
     throw new HttpError(401, 'Your sign in expired. Sign in again.');
   }
+}
+
+// ---- Privy user record (server API). Used to read the X account Privy verified through OAuth,
+// and the wallets that belong to this user. Needs PRIVY_APP_SECRET.
+export async function privyUser(did) {
+  const appId = need('PRIVY_APP_ID', 'VITE_PRIVY_APP_ID');
+  const secret = need('PRIVY_APP_SECRET');
+  const res = await fetch(`https://auth.privy.io/api/v1/users/${encodeURIComponent(did)}`, {
+    headers: { 'privy-app-id': appId, authorization: `Basic ${Buffer.from(`${appId}:${secret}`).toString('base64')}` },
+  });
+  if (!res.ok) { console.error('Privy user lookup failed', res.status); throw new HttpError(503, 'Could not check your account. Try again.'); }
+  const u = await res.json();
+  const accounts = Array.isArray(u.linked_accounts) ? u.linked_accounts : [];
+  const x = accounts.find((a) => a.type === 'twitter_oauth');
+  const wallets = accounts.filter((a) => a.type === 'wallet' && a.address).map((a) => String(a.address).toLowerCase());
+  return { xUsername: x?.username ? normalizeHandle(x.username) : '', wallets };
 }
 
 // ---- Upstash Redis over REST (works from serverless, no extra package)

@@ -2,19 +2,27 @@
 // Verifies the Privy user and the Telegram confirmation, signs the EIP-712 claim, and relays it (relayer pays gas).
 import { formatEther } from 'viem';
 import {
-  HttpError, route, verifyPrivy, kvGet, kvDel, kvLock, readAllocation, publicClient, relayerClient, relayerAccount,
+  HttpError, route, verifyPrivy, kvGet, kvDel, kvLock, readAllocation, privyUser, tagOf, publicClient, relayerClient, relayerAccount,
   authorizerAccount, vaultAddress, vaultAbi, monadTestnet, ID_RE, ADDR_RE, STATUS_OPEN,
 } from './_shared.js';
 
 export default route('POST', async (req) => {
   const did = await verifyPrivy(req);
-  const { allocationId, destination } = req.body || {};
+  const { allocationId, destination, kind } = req.body || {};
   if (!ID_RE.test(allocationId || '')) throw new HttpError(400, 'This claim link is not valid.');
   if (!ADDR_RE.test(destination || '')) throw new HttpError(400, 'Your wallet is not ready yet.');
 
-  const conf = await kvGet(`conf:${allocationId}`);
-  if (!conf || conf.did !== did) throw new HttpError(403, 'Confirm your Telegram username first.');
-  if (conf.destination !== destination.toLowerCase()) throw new HttpError(403, 'Your wallet changed. Confirm on Telegram again.');
+  const isX = kind === 'x';
+  if (isX) {
+    // Identity comes from the X account Privy verified, never from anything the browser sends.
+    const [user, alloc] = await Promise.all([privyUser(did), readAllocation(allocationId)]);
+    if (!user.xUsername || tagOf(user.xUsername, 'x') !== alloc.tag) throw new HttpError(403, 'Link the X account this payout was sent to first.');
+    if (!user.wallets.includes(destination.toLowerCase())) throw new HttpError(403, 'That wallet is not on your account.');
+  } else {
+    const conf = await kvGet(`conf:${allocationId}`);
+    if (!conf || conf.did !== did) throw new HttpError(403, 'Confirm your Telegram username first.');
+    if (conf.destination !== destination.toLowerCase()) throw new HttpError(403, 'Your wallet changed. Confirm on Telegram again.');
+  }
 
   // One claim at a time per allocation.
   if (!(await kvLock(`lock:${allocationId}`, 60))) throw new HttpError(409, 'A claim is already in progress.');
@@ -54,7 +62,7 @@ export default route('POST', async (req) => {
     }
 
     const txHash = await relayerClient().writeContract(request);
-    await kvDel(`conf:${allocationId}`);
+    if (!isX) await kvDel(`conf:${allocationId}`);
     try {
       const rc = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
       if (rc.status !== 'success') throw new HttpError(500, 'The claim transaction failed on chain.');
