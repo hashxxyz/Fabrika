@@ -1084,26 +1084,27 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     try { localStorage.setItem('fabrika.wallet', w.info.rdns || 'injected'); } catch (e) {}
     doConnect();
   }
-  var WC_SRC = 'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/dist/index.umd.js';
-  function loadWC() {
-    return new Promise(function (ok, no) {
-      if (window['@walletconnect/ethereum-provider']) return ok();
-      var sc = document.createElement('script'); sc.src = WC_SRC; sc.onload = function () { ok(); }; sc.onerror = function () { no(new Error('Could not load WalletConnect')); };
-      document.head.appendChild(sc);
-    });
-  }
-  function wcClass() {
-    var g = window['@walletconnect/ethereum-provider'], c = [g, g && g.EthereumProvider, g && g.default, g && g.default && g.default.EthereumProvider];
-    for (var i = 0; i < c.length; i++) if (c[i] && typeof c[i].init === 'function') return c[i];
-    if (g && typeof g === 'object') for (var k in g) if (g[k] && typeof g[k].init === 'function') return g[k];
-    throw new Error('WalletConnect library did not load. Reload the page and try again.');
+  var WC_URLS = [
+    'https://esm.sh/@walletconnect/ethereum-provider@2.17.0?bundle',
+    'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/+esm',
+    'https://esm.sh/@walletconnect/ethereum-provider@2.17.0'
+  ], wcCls = null;
+  async function loadWC() {
+    if (wcCls) return wcCls;
+    for (var i = 0; i < WC_URLS.length; i++) {
+      try {
+        var m = await import(WC_URLS[i]);
+        var C = m.EthereumProvider || (m.default && (m.default.EthereumProvider || m.default));
+        if (C && typeof C.init === 'function') { wcCls = C; return C; }
+      } catch (e) {}
+    }
+    throw new Error('WalletConnect could not load. Check your connection and try again.');
   }
   function wcConfig() { return { projectId: WC_PROJECT_ID, optionalChains: [10143], rpcMap: { 10143: RPCS[0] }, showQrModal: true, metadata: { name: 'Fabrika', description: 'Pay and get paid with a link on Monad', url: location.origin, icons: [] } }; }
   async function pickWC() {
     closeWallets(); $('err').textContent = ''; toast('Opening WalletConnect…');
     try {
-      await loadWC();
-      var prov = await wcClass().init(wcConfig());
+      var prov = await (await loadWC()).init(wcConfig());
       if (!prov.session) await prov.connect();
       state.prov = prov; bind(prov);
       try { localStorage.setItem('fabrika.wallet', 'wc'); } catch (e) {}
@@ -1173,7 +1174,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     var p = null;
     if (saved === 'wc') {
       if (!WC_PROJECT_ID) return;
-      try { await loadWC(); var wp = await wcClass().init(wcConfig()); if (wp.session) p = wp; } catch (e) {}
+      try { var wp = await (await loadWC()).init(wcConfig()); if (wp.session) p = wp; } catch (e) {}
     } else if (found[saved]) p = found[saved].provider;
     else if (saved === 'injected' && window.ethereum) p = window.ethereum;
     if (!p) return;
