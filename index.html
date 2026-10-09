@@ -1092,12 +1092,18 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
       document.head.appendChild(sc);
     });
   }
+  function wcClass() {
+    var g = window['@walletconnect/ethereum-provider'], c = [g, g && g.EthereumProvider, g && g.default, g && g.default && g.default.EthereumProvider];
+    for (var i = 0; i < c.length; i++) if (c[i] && typeof c[i].init === 'function') return c[i];
+    if (g && typeof g === 'object') for (var k in g) if (g[k] && typeof g[k].init === 'function') return g[k];
+    throw new Error('WalletConnect library did not load. Reload the page and try again.');
+  }
   function wcConfig() { return { projectId: WC_PROJECT_ID, optionalChains: [10143], rpcMap: { 10143: RPCS[0] }, showQrModal: true, metadata: { name: 'Fabrika', description: 'Pay and get paid with a link on Monad', url: location.origin, icons: [] } }; }
   async function pickWC() {
     closeWallets(); $('err').textContent = ''; toast('Opening WalletConnect…');
     try {
       await loadWC();
-      var prov = await window['@walletconnect/ethereum-provider'].EthereumProvider.init(wcConfig());
+      var prov = await wcClass().init(wcConfig());
       if (!prov.session) await prov.connect();
       state.prov = prov; bind(prov);
       try { localStorage.setItem('fabrika.wallet', 'wc'); } catch (e) {}
@@ -1167,7 +1173,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     var p = null;
     if (saved === 'wc') {
       if (!WC_PROJECT_ID) return;
-      try { await loadWC(); var wp = await window['@walletconnect/ethereum-provider'].EthereumProvider.init(wcConfig()); if (wp.session) p = wp; } catch (e) {}
+      try { await loadWC(); var wp = await wcClass().init(wcConfig()); if (wp.session) p = wp; } catch (e) {}
     } else if (found[saved]) p = found[saved].provider;
     else if (saved === 'injected' && window.ethereum) p = window.ethereum;
     if (!p) return;
