@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script type="module" src="/src/wc.js"></script>
 <style>
 /* Layout: graphite silk field behind a left-aligned hero. A payment slip (sample or live) stitches itself from Pending to Paid. A frosted wallet panel sits beside it. The app (request, send, history) opens below once a wallet is connected. */
 :root {
@@ -760,7 +761,7 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
     if (!rc) return { st: 'pending' };
     if (rc.status !== '0x1') return { st: 'failed' };
     var okTo = tx.to && tx.to.toLowerCase() === req.to.toLowerCase();
-    var okVal = BigInt(tx.value || '0x0') >= req.wei;
+    var okVal = BigInt(tx.value || '0x0') === req.wei;
     var okId = (tx.input || '').toLowerCase() === strHex('fabrika:' + req.id);
     if (!(okTo && okVal && okId)) return { st: 'mismatch' };
     return { st: 'paid', from: tx.from, hash: hash };
@@ -1091,6 +1092,8 @@ footer a { color: var(--ink); text-underline-offset: 3px; }
   ], wcCls = null;
   async function loadWC() {
     if (wcCls) return wcCls;
+    for (var w = 0; w < 20 && !window.__WC; w++) await sleep(150);
+    if (window.__WC && typeof window.__WC.init === 'function') { wcCls = window.__WC; return wcCls; }
     for (var i = 0; i < WC_URLS.length; i++) {
       try {
         var m = await import(WC_URLS[i]);
