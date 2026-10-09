@@ -1,0 +1,111 @@
+// Shared helpers for the Fabrika serverless functions. Files starting with "_" are not routes on Vercel.
+import { randomBytes } from 'node:crypto';
+import { createPublicClient, createWalletClient, http, parseAbi, defineChain, keccak256, toBytes } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+export class HttpError extends Error {
+  constructor(status, message) { super(message); this.status = status; }
+}
+
+const env = (k, ...alts) => {
+  for (const name of [k, ...alts]) { const v = (process.env[name] || '').trim(); if (v) return v; }
+  return '';
+};
+const need = (k, ...alts) => {
+  const v = env(k, ...alts);
+  if (!v) { console.error(`Missing env var ${k}`); throw new HttpError(503, 'The claim service is not configured yet.'); }
+  return v;
+};
+
+export const monadTestnet = defineChain({
+  id: 10143,
+  name: 'Monad Testnet',
+  nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
+  rpcUrls: { default: { http: [env('RPC_URL') || 'https://testnet-rpc.monad.xyz'] } },
+});
+
+export const vaultAbi = parseAbi([
+  'function claim(bytes32 allocationId, address destination, uint256 deadline, bytes signature)',
+  'function getAllocation(bytes32 allocationId) view returns (address sender, bytes32 batchId, bytes32 recipientTag, uint256 amount, uint64 expiresAt, uint8 status)',
+]);
+export const STATUS_OPEN = 1;
+
+export const vaultAddress = () => need('VAULT_ADDRESS', 'VITE_VAULT_ADDRESS');
+export const publicClient = createPublicClient({ chain: monadTestnet, transport: http() });
+
+const key = (name) => {
+  const k = need(name);
+  return privateKeyToAccount(k.startsWith('0x') ? k : `0x${k}`);
+};
+export const authorizerAccount = () => key('AUTHORIZER_PRIVATE_KEY');
+export const relayerAccount = () => (env('RELAYER_PRIVATE_KEY') ? key('RELAYER_PRIVATE_KEY') : authorizerAccount());
+export const relayerClient = () => createWalletClient({ account: relayerAccount(), chain: monadTestnet, transport: http() });
+
+// Same rule as src/lib.js: trim, drop leading @, lowercase, keccak256 of the UTF-8 bytes.
+export const normalizeHandle = (s) => String(s || '').trim().replace(/^@+/, '').toLowerCase();
+export const tagOf = (handle) => keccak256(toBytes(normalizeHandle(handle)));
+
+export const ID_RE = /^0x[0-9a-fA-F]{64}$/;
+export const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
+export const newCode = () => randomBytes(16).toString('hex'); // 32 chars, fits Telegram's start payload
+
+export async function readAllocation(id) {
+  const r = await publicClient.readContract({ address: vaultAddress(), abi: vaultAbi, functionName: 'getAllocation', args: [id] });
+  return { sender: r[0], tag: r[2], amount: r[3], expiresAt: r[4], status: Number(r[5]) };
+}
+
+// ---- Privy access token -> Privy user id (the "sub" claim)
+let jwks;
+export async function verifyPrivy(req) {
+  const appId = need('PRIVY_APP_ID', 'VITE_PRIVY_APP_ID');
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
+  if (!token) throw new HttpError(401, 'Sign in first.');
+  jwks ||= createRemoteJWKSet(new URL(`https://auth.privy.io/api/v1/apps/${appId}/jwks.json`));
+  try {
+    const { payload } = await jwtVerify(token, jwks, { issuer: 'privy.io', audience: appId });
+    if (!payload.sub) throw new Error('no sub');
+    return payload.sub;
+  } catch {
+    throw new HttpError(401, 'Your sign in expired. Sign in again.');
+  }
+}
+
+// ---- Upstash Redis over REST (works from serverless, no extra package)
+async function redis(...cmd) {
+  const url = need('UPSTASH_REDIS_REST_URL', 'KV_REST_API_URL');
+  const token = need('UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_TOKEN');
+  const res = await fetch(url, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: JSON.stringify(cmd) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || j.error) { console.error('Redis error', j.error || res.status); throw new HttpError(503, 'The claim service is busy. Try again.'); }
+  return j.result;
+}
+export const kvSet = (k, v, ttl) => redis('SET', k, JSON.stringify(v), 'EX', String(ttl));
+export const kvGet = async (k) => { const r = await redis('GET', k); return r ? JSON.parse(r) : null; };
+export const kvDel = (k) => redis('DEL', k);
+export const kvLock = async (k, ttl) => (await redis('SET', k, '1', 'NX', 'EX', String(ttl))) === 'OK';
+
+// ---- Telegram
+export async function tg(method, body) {
+  const res = await fetch(`https://api.telegram.org/bot${need('TELEGRAM_BOT_TOKEN')}/${method}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (!res.ok) console.error('Telegram error', method, res.status, await res.text().catch(() => ''));
+}
+export const webhookSecret = () => need('TELEGRAM_WEBHOOK_SECRET');
+
+// ---- Route wrapper: method check, JSON in and out, errors never leak internals
+export function route(method, fn) {
+  return async (req, res) => {
+    try {
+      if (req.method !== method) throw new HttpError(405, 'Method not allowed');
+      const out = await fn(req);
+      res.status(200).json(out ?? { ok: true });
+    } catch (e) {
+      if (e instanceof HttpError) return res.status(e.status).json({ message: e.message });
+      console.error(e);
+      res.status(500).json({ message: 'Something went wrong. Try again.' });
+    }
+  };
+}
