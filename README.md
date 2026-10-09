@@ -1,43 +1,68 @@
 # Fabrika
 
-Pay and get paid with a link on Monad testnet. Built for Monad Metropolis.
+Pay anyone on Telegram, on Monad testnet. The sender locks MON in `FabrikaVault` for a Telegram username. The recipient signs in with Privy, proves the username through the bot, and claims. Unclaimed money returns to the sender.
 
-## Features
-- Silk landing page, dark and light
-- Wallet connect (MetaMask, Rabby, Phantom) and Monad testnet switch
-- Send test MON with live confirmation
-- Payment requests as shareable links (details travel inside the link, no server)
-- Pay page: payer sends MON with a reference id in the transaction data
-- On-chain verification: receipt link or pasted hash is checked against recipient, amount and reference
-- History saved on the device
+## Stack
+- Vite + React
+- Privy for sign in (email, Google, external wallet) and the embedded wallet
+- viem for chain calls
+- Monad Testnet, chain ID 10143, currency MON
 
-## Wallets
-The Connect button opens a wallet picker: wallets detected in the browser (EIP-6963), links that open the page inside MetaMask, Trust Wallet, Coinbase Wallet or Phantom, and WalletConnect. To show WalletConnect, create a free project at https://dashboard.reown.com, add your site's domain to its allowlist, and set `WC_PROJECT_ID` near the top of the script in `index.html`.
+## Setup
+1. Create an app at https://dashboard.privy.io. Turn on Email, Google and Wallet login. Add your site domain to Allowed origins.
+2. Copy `.env.example` to `.env` and fill in:
+   - `VITE_PRIVY_APP_ID`
+   - `VITE_VAULT_ADDRESS` (after you deploy the vault)
+   - `VITE_BOT_USERNAME` (stage 3)
+3. `npm install`, then `npm run dev`. Deploy on Vercel with the same variables.
 
-## Smart contract (optional upgrade)
-`contracts/FabrikaPay.sol` makes requests enforceable on-chain: exact amount, one payment per request, expiry, creator-only cancel. Paid status then comes from the contract and updates by itself. Deploy steps are in `contracts/DEPLOY.md`, tests in `contracts/TESTING.md`. Set `CONTRACT` in `index.html` to turn it on. Without it the app uses the transaction-reference mode.
+Without `VITE_PRIVY_APP_ID` the site shows a setup screen instead of the sign in modal.
+
+## Contract
+```
+forge install foundry-rs/forge-std
+forge test -vv
+```
+Source: `contracts/FabrikaVault.sol`. Tests: `test/FabrikaVault.t.sol`. Deploy with the authorizer address (the backend signer) as the one constructor argument.
+
+## Recipient tag rule
+Trim, drop leading `@`, lowercase, then keccak256 of the UTF-8 bytes. The frontend (`src/lib.js`) and the stage 3 backend must use this same rule.
+
+## Screens
+- Home: sign in with the Privy modal.
+- New payout: one `@username amount` per line, lock the total, get a claim link per person.
+- Payouts: live status from the vault, cancel an open allocation, take back an expired one.
+- `/claim?a=<allocationId>`: recipient signs in, confirms on Telegram, claims.
+
+## Stage 3: claim backend and Telegram bot
+Vercel serverless functions in `api/`:
+- `POST /api/start-link`: claim page asks for a one-time code, bound to the Privy user and the wallet. Used in the bot deep link `https://t.me/<bot>?start=<code>`.
+- `POST /api/telegram`: bot webhook. Checks the sender's @username against the on-chain recipient tag, shows the destination wallet, and asks for a tap to confirm.
+- `GET /api/status`: tells the claim page if Telegram is confirmed.
+- `POST /api/claim`: verifies the Privy token and the confirmation, signs the EIP-712 claim, simulates it, and relays it from the relayer wallet (which pays gas). Returns `{ txHash }` or `{ message }`.
+
+Why the confirm tap shows the wallet: it stops someone sending a victim their own bot link so the victim confirms the attacker's wallet. The claim only goes through if the Privy user and wallet match the ones that started the flow.
+
+### Setup
+1. Make the authorizer key: `node scripts/gen-key.mjs`. Deploy the vault with that address as the constructor argument. Optionally make a second key for the relayer.
+2. Fund the relayer address (or the authorizer if you use one key) with MON from the faucet. Claims are refused below 0.01 MON.
+3. Create a bot with @BotFather. Put the token and username in env.
+4. Create a free Upstash Redis database and copy its REST URL and token.
+5. Set all variables from `.env.example` in Vercel, then deploy. Also set `VITE_BOT_USERNAME`.
+6. Point the bot at your site (once, after deploy):
+```
+TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=... WEBHOOK_URL=https://YOUR-SITE/api/telegram node scripts/set-webhook.mjs
+```
+Run the frontend with `vercel dev` locally so `/api` works (plain `npm run dev` has no backend).
+
+### Known limits
+- No rate limiting yet. Add it before mainnet.
+- If the authorizer key leaks, someone could redirect open payouts. Rotate by redeploying the vault.
+- Telegram confirmation lasts 1 hour. After that, tap Confirm again.
 
 ## Network
-- Monad Testnet, chain ID 10143, currency MON
 - RPC: https://testnet-rpc.monad.xyz
 - Explorer: https://testnet.monadvision.com
 - Faucet: https://faucet.monad.xyz
 
-## Run
-WalletConnect is bundled with Vite, so the site works in any browser, with no wallet browser needed.
-
-```
-npm install
-npm run dev      # local
-npm run build    # outputs dist/
-```
-
-Deploy on Vercel from GitHub or with the Vercel CLI. Vercel detects Vite and runs the build. Dragging the raw folder into a static host skips the build and WalletConnect falls back to a CDN.
-
-## Email and social login (no wallet app)
-Fabrika can create a wallet for people who sign in with Google or email, using MetaMask Embedded Wallets.
-1. Create a project at https://dashboard.web3auth.io on the Sapphire Devnet environment and copy the Client ID.
-2. In the dashboard, add your site domain (for example https://fabrika.vercel.app) to the allowed origins.
-3. In the dashboard, under Chains and Networks, add Monad Testnet: chain ID 0x279f (10143), RPC https://testnet-rpc.monad.xyz, ticker MON, explorer https://testnet.monadvision.com.
-4. Paste the Client ID into `W3A_CLIENT_ID` near the top of the script in `index.html`.
-New wallets start with 0 MON. The page links to the faucet when the balance is empty.
+`legacy/` holds the old single-file app (Web3Auth and WalletConnect) for reference. `contracts/FabrikaPay.sol` is the old payment-link contract.

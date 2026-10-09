@@ -4,3 +4,7 @@ dist
 out
 cache
 lib
+.env
+.env.*
+!.env.example
+.DS_Store
