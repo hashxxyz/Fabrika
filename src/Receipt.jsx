@@ -4,6 +4,7 @@ import { VAULT, PAY, vaultAbi, payAbi, publicClient, explorer } from './chain.js
 import { fmtMon, shortAddr, fmtDate, cleanError } from './lib.js';
 import { Link } from './router.jsx';
 import { copyText } from './ui.jsx';
+import { downloadReceipt, copyReceiptImage } from './receiptImage.js';
 
 const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 const CROSS = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
@@ -33,6 +34,10 @@ export function ReceiptCard({ title, amount, ok = true, rows = [], hash, took, t
         {rows.filter(Boolean).map(([k, v]) => (
           <div className="set-row" key={k}><span>{k}</span><span>{v}</span></div>
         ))}
+      </div>
+      <div className="receipt-actions">
+        <button className="btn sm" type="button" onClick={() => downloadReceipt({ title, amount, ok, rows, hash, took }).then(() => toast?.('Receipt saved as image'), () => toast?.('Could not make the image'))}>Download image</button>
+        <button className="btn ghost sm" type="button" onClick={() => copyReceiptImage({ title, amount, ok, rows, hash, took }).then((r) => toast?.(r === 'copied' ? 'Image copied' : r === 'shared' ? 'Shared' : 'Saved as image'), (e) => { if (e?.name !== 'AbortError') toast?.('Could not copy. Use Download image.'); })}>Copy image</button>
       </div>
       {hash && (
         <div className="receipt-actions">
