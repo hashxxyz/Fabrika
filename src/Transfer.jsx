@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { formatEther } from 'viem';
 import { VAULT, vaultAbi, publicClient, chainNow } from './chain.js';
 import {
-  parseLines, parseAmount, normalizeHandle, tagOf, randomId, saveBatch, removeBatch, saveTransfer, cleanError, fmtMon, fmtDate, shortAddr, KINDS, ADDR_RE,
+  parseLines, parseAmount, normalizeHandle, tagOf, randomId, saveBatch, removeBatch, saveTransfer, cleanError, fmtMon, fmtDate, shortAddr, KINDS, ADDR_RE, cleanNote,
 } from './lib.js';
 import Share from './Share.jsx';
 import Gate from './Gate.jsx';
-import { pushHistory } from './history.js';
+import { pushHistory, saveLabel } from './history.js';
 import { Link } from './router.jsx';
 import { ReceiptCard } from './Receipt.jsx';
 
@@ -37,7 +37,7 @@ export default function Transfer({ acct, toast }) {
   );
 }
 
-const blank = () => ({ name: '', amt: '' });
+const blank = () => ({ name: '', amt: '', note: '' });
 
 function check(people, kind) {
   const k = KINDS[kind];
@@ -52,7 +52,7 @@ function check(people, kind) {
     else if (seen.has(handle)) e = 'You added this person twice.';
     if (e) { rowErr[i] = e; return; }
     seen.add(handle);
-    rows.push({ handle, amount });
+    rows.push({ handle, amount, note: cleanNote(p.note) });
   });
   return { rows, rowErr };
 }
@@ -77,7 +77,7 @@ function HandleForm({ kind, acct, toast }) {
     if (out.errors.length) return setErr(out.errors[0]);
     if (!out.rows.length) return setErr('Add at least one line.');
     setErr('');
-    setPeople(out.rows.map((r) => ({ name: r.handle, amt: formatEther(r.amount) })));
+    setPeople(out.rows.map((r) => ({ name: r.handle, amt: formatEther(r.amount), note: '' })));
     setPaste('');
   }
 
@@ -105,7 +105,7 @@ function HandleForm({ kind, acct, toast }) {
       // Save the links the moment the tx is sent, so they survive a dropped connection or a closed tab.
       const batch = {
         batchId, hash, kind, createdAt: Date.now(), expiresAt: Number(expiresAt), took: '',
-        items: rows.map((r, i) => ({ id: ids[i], kind, handle: r.handle, amount: r.amount.toString() })),
+        items: rows.map((r, i) => ({ id: ids[i], kind, handle: r.handle, amount: r.amount.toString(), ...(r.note ? { note: r.note } : {}) })),
       };
       saveBatch(acct.address, batch);
       setBusy('Sending…');
@@ -119,7 +119,10 @@ function HandleForm({ kind, acct, toast }) {
       if (rc.status !== 'success') { removeBatch(acct.address, batchId); throw new Error('The transaction failed.'); }
       batch.took = secs(t0);
       saveBatch(acct.address, batch);
-      pushHistory(acct, { type: 'payment', batchId, hash, kind, createdAt: batch.createdAt, expiresAt: batch.expiresAt, items: batch.items.map((i) => ({ id: i.id, handle: i.handle })) });
+      pushHistory(acct, { type: 'payment', batchId, hash, kind, createdAt: batch.createdAt, expiresAt: batch.expiresAt, items: batch.items.map((i) => ({ id: i.id, handle: i.handle, note: i.note || '' })) });
+      // Name the transaction in Wallet activity: the note if there is one shared description, else the first.
+      const notes = [...new Set(batch.items.map((i) => i.note).filter(Boolean))];
+      if (notes.length) saveLabel(acct, acct.address, `tx:${hash}`, notes.length === 1 ? notes[0] : `${notes[0]} +${notes.length - 1} more`);
       setResult(batch);
       setPeople([blank()]);
       setTried(false);
@@ -147,9 +150,9 @@ function HandleForm({ kind, acct, toast }) {
         <div className="card">
           {result.items.map((it) => (
             <div className="act" key={it.id} style={{ gridTemplateColumns: '1fr auto' }}>
-              <span className="t">@{it.handle}</span>
+              <span className="t">@{it.handle}{it.note ? <span className="note"> · {it.note}</span> : null}</span>
               <span className="a">{fmtMon(BigInt(it.amount))} MON</span>
-              <Share id={it.id} kind={kind} handle={it.handle} amount={formatEther(BigInt(it.amount))} toast={toast} />
+              <Share id={it.id} kind={kind} handle={it.handle} amount={formatEther(BigInt(it.amount))} note={it.note || ''} toast={toast} />
             </div>
           ))}
         </div>
@@ -171,10 +174,11 @@ function HandleForm({ kind, acct, toast }) {
               <span>@</span>
               <input value={p.name} onChange={(e) => set(i, 'name', e.target.value)} placeholder={`${label} username`} aria-label={`${label} username ${i + 1}`} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} />
             </div>
-            <input value={p.amt} onChange={(e) => set(i, 'amt', e.target.value)} placeholder="MON" aria-label={`Amount ${i + 1}`} inputMode="decimal" autoComplete="off" />
             {people.length > 1
               ? <button className="x-btn" type="button" aria-label="Remove person" onClick={() => setPeople((l) => l.filter((_, j) => j !== i))}>×</button>
               : <span />}
+            <input value={p.amt} onChange={(e) => set(i, 'amt', e.target.value)} placeholder="Amount in MON" aria-label={`Amount ${i + 1}`} inputMode="decimal" autoComplete="off" />
+            <input value={p.note} onChange={(e) => set(i, 'note', e.target.value)} placeholder="Description (optional), e.g. Lunch" aria-label={`Description ${i + 1}`} maxLength={80} autoComplete="off" />
             {rowErr[i] && (tried || (p.name && p.amt)) && <span className="person-err">{rowErr[i]}</span>}
           </div>
         ))}
@@ -206,6 +210,7 @@ function HandleForm({ kind, acct, toast }) {
 function WalletForm({ acct, toast }) {
   const [to, setTo] = useState('');
   const [amt, setAmt] = useState('');
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const [done, setDone] = useState(null);
@@ -228,11 +233,13 @@ function WalletForm({ acct, toast }) {
       const t0 = performance.now();
       const rc = await publicClient.waitForTransactionReceipt({ hash });
       if (rc.status !== 'success') throw new Error('The transaction failed.');
-      const t = { hash, to: address, amount: amount.toString(), at: Date.now(), took: secs(t0) };
+      const memo = cleanNote(note);
+      const t = { hash, to: address, amount: amount.toString(), at: Date.now(), took: secs(t0), ...(memo ? { note: memo } : {}) };
       saveTransfer(acct.address, t);
-      pushHistory(acct, { type: 'transfer', hash });
+      pushHistory(acct, { type: 'transfer', hash, note: memo });
+      if (memo) saveLabel(acct, acct.address, `tx:${hash}`, memo);
       setDone(t);
-      setTo(''); setAmt('');
+      setTo(''); setAmt(''); setNote('');
       acct.refresh();
     } catch (e) {
       setErr(cleanError(e));
@@ -248,7 +255,7 @@ function WalletForm({ acct, toast }) {
           title="Money sent"
           amount={BigInt(done.amount)}
           hash={done.hash} took={done.took} toast={toast}
-          rows={[['To', shortAddr(done.to)], ['From', shortAddr(acct.address)]]}
+          rows={[['To', shortAddr(done.to)], done.note ? ['For', done.note] : null, ['From', shortAddr(acct.address)]]}
         />
         <button className="btn ghost" type="button" onClick={() => setDone(null)}>Send another</button>
       </>
@@ -265,6 +272,10 @@ function WalletForm({ acct, toast }) {
       <div className="field">
         <label htmlFor="amt">Amount (MON)</label>
         <input id="amt" value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="1.5" inputMode="decimal" autoComplete="off" />
+      </div>
+      <div className="field">
+        <label htmlFor="memo">Description (optional)</label>
+        <input id="memo" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Rent, May" maxLength={80} autoComplete="off" />
       </div>
       <p className="callout warn">This goes straight to the wallet. There is no claim step and no refund, so double-check the address.</p>
       <button className="btn" type="button" onClick={submit} disabled={!!busy}>{busy || 'Send'}</button>

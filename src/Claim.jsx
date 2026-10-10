@@ -3,7 +3,7 @@ import { formatEther } from 'viem';
 import { VAULT, BOT, vaultAbi, publicClient, STATUS } from './chain.js';
 import { Link } from './router.jsx';
 import { receiptPath } from './Receipt.jsx';
-import { fmtMon, fmtDate, cleanError } from './lib.js';
+import { fmtMon, fmtDate, cleanError, cleanNote } from './lib.js';
 import { Stitch, Badge } from './ui.jsx';
 
 const ID_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -13,6 +13,7 @@ export default function Claim({ acct }) {
   const a = q.get('a') || '';
   const kind = q.get('k') === 'x' ? 'x' : 'telegram';
   const isX = kind === 'x';
+  const note = cleanNote(q.get('n') || ''); // comes from the link, so it is shown as the sender's note, not as a verified fact
   const [info, setInfo] = useState(null);
   const [loadErr, setLoadErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -105,6 +106,7 @@ export default function Claim({ acct }) {
             <div className="slip-top"><span>Payout waiting</span><Badge>{paid ? 'Claimed' : STATUS[info.status]}</Badge></div>
             <div className="slip-amt">{fmtMon(info.amount)}<small>MON</small></div>
             <div className="slip-note">{formatEther(info.amount)} MON, expires {fmtDate(info.expiresAt)}</div>
+            {note && <div className="slip-note">Note from the sender: {note}</div>}
             <Stitch />
             {open && !tx && (
               <ol className="mini steps2">

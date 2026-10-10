@@ -42,3 +42,17 @@ export async function syncHistory(acct) {
     return added;
   } catch { return 0; }
 }
+
+// Name a transaction (shows in Account > Wallet activity). Saved on this device and, best-effort, on the server.
+export async function saveLabel(acct, addr, key, name) {
+  const n = String(name || '').trim().slice(0, 80);
+  if (!n || !addr) return;
+  const k = String(key).toLowerCase();
+  try {
+    const lk = `fabrika.labels.${String(addr).toLowerCase()}`;
+    const m = JSON.parse(localStorage.getItem(lk) || '{}');
+    m[k] = n;
+    localStorage.setItem(lk, JSON.stringify(m));
+  } catch { /* storage full or blocked */ }
+  try { await call(acct, '/api/labels', { method: 'POST', body: JSON.stringify({ address: addr, key: k, name: n }) }); } catch { /* local copy still works */ }
+}

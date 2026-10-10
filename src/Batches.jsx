@@ -67,11 +67,11 @@ export default function Batches({ acct, toast }) {
                 const s = status[it.id];
                 return (
                   <li key={it.id}>
-                    <span className="t">@{it.handle} <em className="tag">{KINDS[it.kind || 'telegram'].label}</em></span>
+                    <span className="t">@{it.handle} <em className="tag">{KINDS[it.kind || 'telegram'].label}</em>{it.note ? <span className="note"> · {it.note}</span> : null}</span>
                     <span className="a">{fmtMon(BigInt(it.amount))} MON</span>
                     <span className="links">
                       <Badge>{s == null ? '…' : STATUS[s]}</Badge>
-                      {s === 1 && <Share id={it.id} kind={it.kind || 'telegram'} handle={it.handle} amount={formatEther(BigInt(it.amount))} toast={toast} />}
+                      {s === 1 && <Share id={it.id} kind={it.kind || 'telegram'} handle={it.handle} amount={formatEther(BigInt(it.amount))} note={it.note || ''} toast={toast} />}
                       {s === 1 && <button type="button" disabled={busyId === it.id} onClick={() => act('cancel', it.id)}>Cancel</button>}
                       {s === 5 && <button type="button" disabled={busyId === it.id} onClick={() => act('refund', it.id)}>Take back</button>}
                     </span>

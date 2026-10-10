@@ -48,7 +48,7 @@ function Transfers({ address }) {
       <div>
         {list.map((t) => (
           <div className="act" key={t.hash}>
-            <span className="t">{shortAddr(t.to)}</span>
+            <span className="t">{shortAddr(t.to)}{t.note ? <span className="note"> · {t.note}</span> : null}</span>
             <span className="a">{fmtMon(BigInt(t.amount))} MON</span>
             <span className="s"><Link to={receiptPath(t.hash)}>Receipt</Link></span>
           </div>

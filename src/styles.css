@@ -140,7 +140,8 @@ input:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
 .balcard .copy { color:var(--on-ink); border-color:currentColor; opacity:.9; }
 .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .btn.sm { padding:12px 16px; font-size:15px; }
-.person { display:grid; grid-template-columns:1fr 104px 36px; gap:8px; align-items:center; }
+.person { display:grid; grid-template-columns:1fr 36px; gap:8px; align-items:center; padding-bottom:14px; border-bottom:1px solid var(--line); }
+.person > input { grid-column:1 / -1; }
 .person .at { position:relative; }
 .person .at > span { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--ink-2); pointer-events:none; }
 .person .at input { padding-left:30px; }
@@ -262,7 +263,8 @@ body { background:radial-gradient(120% 520px at 50% 0%, var(--monad-wash), trans
 .pend-amt { font:500 22px/1.1 var(--font); letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
 .pend-amt small { font:400 13px/1 var(--font); color:var(--ink-2); margin-left:2px; }
 .pend-sub { font-size:13px; color:var(--ink-2); margin-top:3px; }
-.pend-row .btn { flex:0 0 auto; }
+.pend-row .btn { flex:0 0 auto; width:auto; min-width:96px; }
+.pend-row > div:first-child { flex:1 1 auto; min-width:0; }
 
 /* Docs page */
 .docs { gap:14px; }

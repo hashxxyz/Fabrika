@@ -50,7 +50,7 @@ export default function Activity({ acct, toast }) {
   useEffect(() => { load(); }, [load]);
 
   async function save(row) {
-    const name = draft.trim().slice(0, 40);
+    const name = draft.trim().slice(0, 80);
     const key = onlyTx ? `tx:${row.hash}` : row.cp ? `addr:${row.cp}` : `tx:${row.hash}`;
     setLabels((cur) => {
       const m = { ...cur };
@@ -103,7 +103,7 @@ export default function Activity({ acct, toast }) {
               {editing === r.id && (
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <input
-                    value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={40} autoFocus
+                    value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={80} autoFocus
                     placeholder={r.cp ? `Name for ${shortAddr(r.cp)}` : 'Name this transaction'} aria-label="Name"
                     onKeyDown={(e) => { if (e.key === 'Enter') save(r); }}
                   />

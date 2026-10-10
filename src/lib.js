@@ -53,8 +53,11 @@ export const fmtMon = (wei, d = 4) => {
   const n = Number(formatEther(wei));
   return n.toLocaleString(undefined, { maximumFractionDigits: d });
 };
-export const claimUrl = (allocationId, kind = 'telegram') =>
-  `${location.origin}/claim?a=${allocationId}${kind === 'x' ? '&k=x' : ''}`;
+export const cleanNote = (s, max = 80) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+export const claimUrl = (allocationId, kind = 'telegram', note = '') => {
+  const n = cleanNote(note);
+  return `${location.origin}/claim?a=${allocationId}${kind === 'x' ? '&k=x' : ''}${n ? `&n=${encodeURIComponent(n)}` : ''}`;
+};
 export const fmtDate = (sec) => new Date(Number(sec) * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const key = (addr) => `fabrika.batches.${String(addr).toLowerCase()}`;
