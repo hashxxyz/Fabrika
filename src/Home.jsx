@@ -57,7 +57,7 @@ function Overview({ acct, toast }) {
       </div>
       <div className="actions">
         <Link className="btn" to="/transfer">Send money</Link>
-        <Link className="btn ghost" to="/invoice">Create invoice</Link>
+        <Link className="btn ghost" to="/explore">Explore more</Link>
       </div>
       <Pending acct={acct} toast={toast} />
       <p className="note" style={{ margin: 0 }}>Need test MON? <a href={FAUCET} target="_blank" rel="noopener">Get some free</a>.</p>

@@ -292,3 +292,19 @@ body { background:radial-gradient(120% 520px at 50% 0%, var(--monad-wash), trans
   .foot { margin-top:72px; }
 }
 @media (min-width:1280px) { .col.dash { max-width:1080px; } }
+
+/* ---- Explore and feature pages ---- */
+.tiles { display:grid; grid-template-columns:1fr; gap:12px; }
+@media (min-width:640px) { .tiles { grid-template-columns:1fr 1fr; } }
+.tile { display:grid; gap:6px; padding:18px; border:1px solid var(--line); border-radius:20px; background:var(--surface); text-decoration:none; color:var(--ink); }
+.tile:hover { border-color:var(--monad); }
+.tile b { font-weight:500; font-size:17px; }
+.tile span { color:var(--ink-2); font-size:14.5px; }
+.tile em { font-style:normal; font-size:12.5px; color:var(--ink-2); }
+.meter { height:8px; border-radius:999px; background:var(--line); overflow:hidden; }
+.meter i { display:block; height:100%; background:var(--monad-btn, var(--ink)); transition:width .4s ease; }
+.pick { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); font-size:15.5px; }
+.pick input { width:20px; height:20px; flex:none; padding:0; }
+.check { display:flex; align-items:center; gap:10px; font-size:15.5px; }
+.check input { width:20px; height:20px; flex:none; padding:0; }
+.field textarea { font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:var(--bg); color:var(--ink); resize:vertical; min-height:84px; }
