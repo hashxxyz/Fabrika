@@ -9,6 +9,7 @@ import Claim from './Claim.jsx';
 import Invoice from './Invoice.jsx';
 import Pay from './Pay.jsx';
 import ReceiptPage from './Receipt.jsx';
+import Docs from './Docs.jsx';
 import { shortAddr } from './lib.js';
 import { syncHistory } from './history.js';
 
@@ -46,13 +47,14 @@ export default function App() {
 
   let page;
   if (path.startsWith('/pay')) page = <Pay acct={acct} />;
+  else if (path === '/docs') page = <Docs />;
   else if (path === '/receipt') page = <ReceiptPage toast={showToast} />;
   else if (path.startsWith('/claim')) page = <Claim acct={acct} toast={showToast} />;
   else if (path === '/invoice') page = <Invoice acct={acct} toast={showToast} />;
   else if (path === '/transfer') page = <Transfer acct={acct} toast={showToast} />;
   else if (path === '/account') page = <Account acct={acct} toast={showToast} />;
   else if (path === '/settings') page = <Settings acct={acct} toast={showToast} />;
-  else page = <Home acct={acct} />;
+  else page = <Home acct={acct} toast={showToast} />;
 
   return (
     <>
@@ -79,7 +81,7 @@ export default function App() {
       </main>
       <footer className="wrap foot">
         <span>Built on Monad. Testnet only: MON here has no value.</span>
-        <span><a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Get test MON</a> &nbsp; <a href="https://testnet.monadvision.com" target="_blank" rel="noopener">Explorer</a></span>
+        <span><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Get test MON</a> &nbsp; <a href="https://testnet.monadvision.com" target="_blank" rel="noopener">Explorer</a></span>
       </footer>
       {!isClaim && (
         <nav className="tabbar" aria-label="Main">

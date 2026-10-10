@@ -6,11 +6,12 @@ import { receiptPath } from './Receipt.jsx';
 import Batches from './Batches.jsx';
 import Invoices from './Invoices.jsx';
 import Gate from './Gate.jsx';
+import Pending from './Pending.jsx';
 
 export default function Account({ acct, toast }) {
   return (
     <Gate acct={acct} title="Account">
-      <section className="col">
+      <section className="col dash">
         <h1 className="title">Account</h1>
         <div className="balcard">
           <div className="k">{acct.label || 'Your account'}</div>
@@ -27,6 +28,7 @@ export default function Account({ acct, toast }) {
         {acct.balance === 0n && (
           <p className="callout warn">Your balance is empty. Get free test MON from the <a href={FAUCET} target="_blank" rel="noopener">faucet</a> and paste the address above.</p>
         )}
+        <Pending acct={acct} toast={toast} prompt />
         <Invoices acct={acct} toast={toast} />
         <Batches acct={acct} toast={toast} />
         <Transfers address={acct.address} />

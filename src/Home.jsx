@@ -3,11 +3,12 @@ import { Stitch, Badge } from './ui.jsx';
 import { Link } from './router.jsx';
 import { fmtMon, shortAddr, recentActivity } from './lib.js';
 import { FAUCET } from './chain.js';
+import Pending from './Pending.jsx';
 
 const SAMPLE = [['@ada', '2.5', 'Telegram'], ['@tunde', '1', 'X'], ['0x4f3a…91c2', '0.5', 'Wallet']];
 
-export default function Home({ acct }) {
-  return acct.authenticated ? <Overview acct={acct} /> : <Landing acct={acct} />;
+export default function Home({ acct, toast }) {
+  return acct.authenticated ? <Overview acct={acct} toast={toast} /> : <Landing acct={acct} />;
 }
 
 function Landing({ acct }) {
@@ -45,10 +46,10 @@ function Landing({ acct }) {
   );
 }
 
-function Overview({ acct }) {
+function Overview({ acct, toast }) {
   const recent = acct.address ? recentActivity(acct.address, 5) : [];
   return (
-    <section className="col">
+    <section className="col dash">
       <div className="balcard">
         <div className="k">Your balance</div>
         <div className="big"><span>{acct.balance == null ? '…' : fmtMon(acct.balance)}</span><small>MON</small></div>
@@ -58,6 +59,7 @@ function Overview({ acct }) {
         <Link className="btn" to="/transfer">Send money</Link>
         <Link className="btn ghost" to="/invoice">Create invoice</Link>
       </div>
+      <Pending acct={acct} toast={toast} />
       <p className="note" style={{ margin: 0 }}>Need test MON? <a href={FAUCET} target="_blank" rel="noopener">Get some free</a>.</p>
       <div className="card">
         <div className="card-head"><h3>Recent activity</h3>{recent.length > 0 && <Link className="copy" to="/account">See all</Link>}</div>

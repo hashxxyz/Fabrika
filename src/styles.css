@@ -255,3 +255,38 @@ body { background:radial-gradient(120% 520px at 50% 0%, var(--monad-wash), trans
 .callout { background:var(--bg); border-color:var(--monad-line); }
 .callout.warn { border-color:var(--alert); }
 .receipt { background:var(--monad-tint); border-color:var(--monad-line); border-top-color:var(--monad); }
+
+/* Pending to claim */
+.pend-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-top:1px solid var(--monad-line); }
+.pend-row:first-child { border-top:0; }
+.pend-amt { font:500 22px/1.1 var(--font); letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.pend-amt small { font:400 13px/1 var(--font); color:var(--ink-2); margin-left:2px; }
+.pend-sub { font-size:13px; color:var(--ink-2); margin-top:3px; }
+.pend-row .btn { flex:0 0 auto; }
+
+/* Docs page */
+.docs { gap:14px; }
+.docs h2 { font:500 22px/1.2 var(--font); letter-spacing:-.02em; margin:22px 0 0; scroll-margin-top:84px; }
+.docs p, .docs li { line-height:1.55; margin:0; }
+.docs ol, .docs ul { margin:0; padding-left:22px; display:grid; gap:8px; }
+.docs a { color:var(--monad-ink); }
+.toc { display:flex; flex-wrap:wrap; gap:8px; }
+.toc .pill { cursor:pointer; font-size:14px; }
+.docs .set-row { align-items:flex-start; gap:16px; } .docs .set-row span:last-child { text-align:right; max-width:62%; }
+.faq { display:grid; gap:8px; }
+.faq details { background:var(--monad-tint); border:1px solid var(--monad-line); border-radius:14px; padding:12px 16px; }
+.faq summary { cursor:pointer; font-weight:500; list-style:none; display:flex; justify-content:space-between; gap:12px; }
+.faq summary::after { content:'+'; color:var(--monad-ink); font-size:20px; line-height:1; }
+.faq details[open] summary::after { content:'–'; }
+.faq details p { margin-top:8px; color:var(--ink-2); }
+
+/* Desktop: use the width. Phones keep the single column. */
+.col.docs { max-width:760px; }
+@media (min-width:960px) {
+  .app-main { padding-block:36px 16px; }
+  .col.dash { max-width:980px; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; align-items:start; }
+  .col.dash > .title, .col.dash > .balcard, .col.dash > .actions, .col.dash > .callout, .col.dash > .note, .col.dash > p { grid-column:1 / -1; }
+  .col.dash > .balcard { max-width:560px; }
+  .foot { margin-top:72px; }
+}
+@media (min-width:1280px) { .col.dash { max-width:1080px; } }
