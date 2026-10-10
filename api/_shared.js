@@ -8,7 +8,7 @@ export class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
-const env = (k, ...alts) => {
+export const env = (k, ...alts) => {
   for (const name of [k, ...alts]) { const v = (process.env[name] || '').trim(); if (v) return v; }
   return '';
 };
@@ -56,7 +56,7 @@ export const newCode = () => randomBytes(16).toString('hex'); // 32 chars, fits 
 
 export async function readAllocation(id) {
   const r = await publicClient.readContract({ address: vaultAddress(), abi: vaultAbi, functionName: 'getAllocation', args: [id] });
-  return { sender: r[0], tag: r[2], amount: r[3], expiresAt: r[4], status: Number(r[5]) };
+  return { sender: r[0], batchId: r[1], tag: r[2], amount: r[3], expiresAt: r[4], status: Number(r[5]) };
 }
 
 // ---- FabrikaPay (invoices): read-only, used to check who owns an invoice
@@ -118,6 +118,18 @@ export const kvDel = (k) => redis('DEL', k);
 export const kvCount = async (k, ttl) => { const n = Number(await redis('INCR', k)); if (n === 1) await redis('EXPIRE', k, String(ttl)); return n; };
 export const kvPush = async (k, v, max = 200) => { await redis('LPUSH', k, JSON.stringify(v)); await redis('LTRIM', k, '0', String(max - 1)); };
 export const kvList = async (k) => ((await redis('LRANGE', k, '0', '199')) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
+export const kvHset = (k, f, v) => redis('HSET', k, f, v);
+export const kvHdel = (k, f) => redis('HDEL', k, f);
+export const kvHlen = async (k) => Number(await redis('HLEN', k)) || 0;
+export const kvHexists = async (k, f) => Number(await redis('HEXISTS', k, f)) === 1;
+export const kvHall = async (k) => {
+  const r = await redis('HGETALL', k);
+  const o = {};
+  if (Array.isArray(r)) for (let i = 0; i + 1 < r.length; i += 2) o[r[i]] = r[i + 1];
+  else if (r && typeof r === 'object') Object.assign(o, r);
+  return o;
+};
+export const kvDecr = (k) => redis('DECR', k);
 export const kvLock = async (k, ttl) => (await redis('SET', k, '1', 'NX', 'EX', String(ttl))) === 'OK';
 
 // ---- Telegram

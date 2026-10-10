@@ -4,7 +4,7 @@
 // a daily cap, and the relayer must keep a reserve for claim gas.
 import { parseEther, formatEther } from 'viem';
 import {
-  HttpError, route, verifyPrivy, privyUser, kvLock, kvDel, kvCount, publicClient, relayerClient, relayerAccount, ADDR_RE,
+  HttpError, route, verifyPrivy, privyUser, kvLock, kvDel, kvCount, kvDecr, publicClient, relayerClient, relayerAccount, ADDR_RE,
 } from './_shared.js';
 
 const YEAR = 365 * 24 * 3600;
@@ -27,11 +27,13 @@ export default route('POST', async (req) => {
   const kDid = `welcome:did:${did}`;
   if (!(await kvLock(kAddr, YEAR))) throw new HttpError(409, 'Starter balance already sent.');
   if (!(await kvLock(kDid, YEAR))) { await kvDel(kAddr).catch(() => {}); throw new HttpError(409, 'Starter balance already sent.'); }
-  const release = () => Promise.all([kvDel(kAddr), kvDel(kDid)]).catch(() => {});
+  let dayKey = '';
+  const release = () => Promise.all([kvDel(kAddr), kvDel(kDid), dayKey ? kvDecr(dayKey) : null]).catch(() => {});
 
   try {
     const day = new Date().toISOString().slice(0, 10);
-    if ((await kvCount(`welcome:day:${day}`, 2 * 24 * 3600)) > dailyCap()) {
+    dayKey = `welcome:day:${day}`;
+    if ((await kvCount(dayKey, 2 * 24 * 3600)) > dailyCap()) {
       throw new HttpError(503, 'Starter balances are used up for today.');
     }
     const relayer = relayerAccount();

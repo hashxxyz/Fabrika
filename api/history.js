@@ -36,7 +36,7 @@ const post = route('POST', async (req) => {
     const checked = await Promise.all(items.map(async (it) => {
       if (!ID_RE.test(it?.id || '') || !HANDLE_RE.test(String(it?.handle || ''))) throw new HttpError(400, 'Bad request.');
       const a = await readAllocation(it.id);
-      if (a.status === 0 || !mine(a.sender) || a.tag !== tagOf(it.handle, kind)) throw new HttpError(403, 'That payment is not yours.');
+      if (a.status === 0 || a.batchId.toLowerCase() !== b.batchId.toLowerCase() || !mine(a.sender) || a.tag !== tagOf(it.handle, kind)) throw new HttpError(403, 'That payment is not yours.');
       return { id: it.id, handle: String(it.handle), amount: a.amount.toString(), sender: a.sender.toLowerCase() };
     }));
     if (!(await kvLock(`hist:seen:${b.batchId}`, YEAR))) return { ok: true };

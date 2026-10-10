@@ -2,7 +2,7 @@
 // Verifies the Privy user and the Telegram confirmation, signs the EIP-712 claim, and relays it (relayer pays gas).
 import { formatEther } from 'viem';
 import {
-  HttpError, route, verifyPrivy, kvGet, kvDel, kvLock, readAllocation, privyUser, tagOf, publicClient, relayerClient, relayerAccount,
+  HttpError, route, verifyPrivy, kvGet, kvSet, kvDel, kvLock, readAllocation, privyUser, tagOf, publicClient, relayerClient, relayerAccount,
   authorizerAccount, vaultAddress, vaultAbi, monadTestnet, ID_RE, ADDR_RE, STATUS_OPEN,
 } from './_shared.js';
 
@@ -29,6 +29,9 @@ export default route('POST', async (req) => {
   try {
     const a = await readAllocation(allocationId);
     if (a.status !== STATUS_OPEN) throw new HttpError(409, 'This payout can no longer be claimed.');
+
+    const sent = await kvGet(`sent:${allocationId}`);
+    if (sent) throw new HttpError(409, 'A claim for this payout was just sent. Give it a moment, then refresh.');
 
     const vault = vaultAddress();
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
@@ -62,6 +65,7 @@ export default route('POST', async (req) => {
     }
 
     const txHash = await relayerClient().writeContract(request);
+    await kvSet(`sent:${allocationId}`, txHash, 120).catch(() => {});
     if (!isX) await kvDel(`conf:${allocationId}`);
     try {
       const rc = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
