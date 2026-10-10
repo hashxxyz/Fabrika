@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatEther } from 'viem';
-import { PAY, payAbi, publicClient } from './chain.js';
+import { PAY, payAbi, publicClient, chainNow } from './chain.js';
 import { parseAmount, randomId, saveInvoice, payUrl, cleanError } from './lib.js';
 import { copyText } from './ui.jsx';
 import { Link } from './router.jsx';
@@ -31,7 +31,7 @@ export default function Invoice({ acct, toast }) {
       setBusy('Confirm…');
       const wc = await acct.getClient();
       const id = randomId();
-      const expiresAt = due === '0' ? 0n : BigInt(Math.floor(Date.now() / 1000) + Number(due));
+      const expiresAt = due === '0' ? 0n : BigInt((await chainNow()) + Number(due));
       const hash = await wc.writeContract({ address: PAY, abi: payAbi, functionName: 'createRequest', args: [id, amount, expiresAt, text] });
       setBusy('Creating…');
       const rc = await publicClient.waitForTransactionReceipt({ hash });

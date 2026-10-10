@@ -7,6 +7,7 @@ import Batches from './Batches.jsx';
 import Invoices from './Invoices.jsx';
 import Gate from './Gate.jsx';
 import Pending from './Pending.jsx';
+import Activity from './Activity.jsx';
 
 export default function Account({ acct, toast }) {
   return (
@@ -31,6 +32,7 @@ export default function Account({ acct, toast }) {
         <Pending acct={acct} toast={toast} prompt />
         <Invoices acct={acct} toast={toast} />
         <Batches acct={acct} toast={toast} />
+        <Activity acct={acct} toast={toast} />
         <Transfers address={acct.address} />
       </section>
     </Gate>

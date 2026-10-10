@@ -17,7 +17,12 @@ export const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
 export const randomId = () => toHex(crypto.getRandomValues(new Uint8Array(32)));
 
 export function parseAmount(s) {
-  const t = String(s ?? '').trim().replace(',', '.');
+  let t = String(s ?? '').trim();
+  // A single comma is a decimal comma ("1,5"). "1,000" is ambiguous, so reject it instead of reading it as 1.
+  if (t.includes(',')) {
+    if (t.includes('.') || !/^\d{1,9},\d{1,2}$|^\d{1,9},\d{4,6}$/.test(t)) return null;
+    t = t.replace(',', '.');
+  }
   if (!/^\d{1,9}(\.\d{1,6})?$/.test(t)) return null;
   const w = parseEther(t);
   return w > 0n ? w : null;
@@ -55,7 +60,10 @@ export const fmtDate = (sec) => new Date(Number(sec) * 1000).toLocaleString(unde
 const key = (addr) => `fabrika.batches.${String(addr).toLowerCase()}`;
 export const loadBatches = (addr) => { try { return JSON.parse(localStorage.getItem(key(addr)) || '[]'); } catch { return []; } };
 export const saveBatch = (addr, b) => {
-  try { localStorage.setItem(key(addr), JSON.stringify([b, ...loadBatches(addr)].slice(0, 50))); } catch { /* storage full or blocked */ }
+  try { localStorage.setItem(key(addr), JSON.stringify([b, ...loadBatches(addr).filter((x) => x.batchId !== b.batchId)].slice(0, 50))); } catch { /* storage full or blocked */ }
+};
+export const removeBatch = (addr, batchId) => {
+  try { localStorage.setItem(key(addr), JSON.stringify(loadBatches(addr).filter((x) => x.batchId !== batchId))); } catch { /* ignore */ }
 };
 
 export function cleanError(e) {

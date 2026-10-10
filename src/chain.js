@@ -41,3 +41,8 @@ export const payAbi = parseAbi([
   'function noteOf(bytes32 id) view returns (string)',
 ]);
 export const PAY_STATUS = ['None', 'Open', 'Paid', 'Cancelled', 'Expired'];
+
+// Current chain time in seconds. Falls back to the device clock if the RPC is unreachable.
+export async function chainNow() {
+  try { return Number((await publicClient.getBlock()).timestamp); } catch { return Math.floor(Date.now() / 1000); }
+}

@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePrivy, useWallets, useExportWallet } from '@privy-io/react-auth';
+import * as PrivySDK from '@privy-io/react-auth';
+
+const { usePrivy, useWallets } = PrivySDK;
 import { createWalletClient, custom } from 'viem';
 import { monadTestnet, publicClient } from './chain.js';
 
 export default function useAccount() {
-  const { ready, authenticated, login, logout, getAccessToken, user, linkTwitter } = usePrivy();
+  const { ready, authenticated, login, logout, getAccessToken, user, linkTwitter, exportWallet: legacyExport } = usePrivy();
   const { wallets } = useWallets();
-  const { exportWallet } = useExportWallet();
+  // Newer Privy versions: useExportWallet. Older: exportWallet on usePrivy. Either way the build cannot break on it.
+  const exporter = PrivySDK.useExportWallet ? PrivySDK.useExportWallet() : null;
   const wallet = wallets.find((w) => w.walletClientType === 'privy') || wallets[0];
   const address = wallet?.address;
   const [balance, setBalance] = useState(null);
   const [welcome, setWelcome] = useState('idle'); // idle | sending | done
+  const [retry, setRetry] = useState(0);
   const tried = useRef(''); // address we already asked for a starter balance
 
   const refresh = useCallback(async () => {
@@ -38,10 +42,12 @@ export default function useAccount() {
           method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ address }),
         });
         if (res.ok || res.status === 409) { try { localStorage.setItem(k, '1'); } catch { /* ignore */ } }
-        if (res.ok) { setWelcome('done'); await refresh(); } else setWelcome('idle');
-      } catch { setWelcome('idle'); }
+        if (res.ok) { setWelcome('done'); await refresh(); return; }
+        setWelcome('idle');
+        if (res.status !== 409) throw new Error('retry');
+      } catch { setWelcome('idle'); setTimeout(() => { tried.current = ''; setRetry((n) => n + 1); }, 30000); }
     })();
-  }, [authenticated, address, balance, getAccessToken, refresh]);
+  }, [authenticated, address, balance, getAccessToken, refresh, retry]);
 
   const getClient = useCallback(async () => {
     if (!wallet) throw new Error('No wallet yet. Sign in first.');
@@ -52,6 +58,7 @@ export default function useAccount() {
 
   // Only wallets Privy created for the user can be exported. Privy opens its own secure window; this app never sees the key.
   const canExport = wallet?.walletClientType === 'privy';
+  const exportWallet = exporter?.exportWallet || legacyExport;
   const exportKey = useCallback(() => exportWallet({ address }), [exportWallet, address]);
 
   const xName = user?.twitter?.username || '';

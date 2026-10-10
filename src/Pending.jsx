@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fmtMon, fmtDate, shortAddr, cleanError } from './lib.js';
 import { Badge } from './ui.jsx';
 import { Link } from './router.jsx';
@@ -12,13 +12,16 @@ export default function Pending({ acct, toast, prompt = false }) {
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
 
+  // acct is a new object on every App render; read the token getter through a ref so load() stays stable.
+  const tokenRef = useRef(acct.getAccessToken);
+  tokenRef.current = acct.getAccessToken;
   const call = useCallback(async (path, init = {}) => {
-    const token = await acct.getAccessToken();
+    const token = await tokenRef.current();
     const res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` } });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(j.message || 'Request failed. Try again.');
     return j;
-  }, [acct]);
+  }, []);
 
   const load = useCallback(async () => {
     if (!acct.authenticated || !acct.address) return;

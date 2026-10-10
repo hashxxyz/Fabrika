@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { formatEther } from 'viem';
-import { VAULT, vaultAbi, publicClient } from './chain.js';
+import { VAULT, vaultAbi, publicClient, chainNow } from './chain.js';
 import {
-  parseLines, parseAmount, normalizeHandle, tagOf, randomId, saveBatch, saveTransfer, cleanError, fmtMon, fmtDate, shortAddr, KINDS, ADDR_RE,
+  parseLines, parseAmount, normalizeHandle, tagOf, randomId, saveBatch, removeBatch, saveTransfer, cleanError, fmtMon, fmtDate, shortAddr, KINDS, ADDR_RE,
 } from './lib.js';
 import Share from './Share.jsx';
 import Gate from './Gate.jsx';
@@ -94,7 +94,7 @@ function HandleForm({ kind, acct, toast }) {
       const wc = await acct.getClient();
       const batchId = randomId();
       const ids = rows.map(() => randomId());
-      const expiresAt = BigInt(Math.floor(Date.now() / 1000) + Number(exp));
+      const expiresAt = BigInt((await chainNow()) + Number(exp));
       const hash = await wc.writeContract({
         address: VAULT,
         abi: vaultAbi,
@@ -102,14 +102,22 @@ function HandleForm({ kind, acct, toast }) {
         args: [batchId, ids, rows.map((r) => tagOf(r.handle, kind)), rows.map((r) => r.amount), expiresAt],
         value: total,
       });
-      setBusy('Sending…');
-      const t0 = performance.now();
-      const rc = await publicClient.waitForTransactionReceipt({ hash });
-      if (rc.status !== 'success') throw new Error('The transaction failed.');
+      // Save the links the moment the tx is sent, so they survive a dropped connection or a closed tab.
       const batch = {
-        batchId, hash, kind, createdAt: Date.now(), expiresAt: Number(expiresAt), took: secs(t0),
+        batchId, hash, kind, createdAt: Date.now(), expiresAt: Number(expiresAt), took: '',
         items: rows.map((r, i) => ({ id: ids[i], kind, handle: r.handle, amount: r.amount.toString() })),
       };
+      saveBatch(acct.address, batch);
+      setBusy('Sending…');
+      const t0 = performance.now();
+      let rc;
+      try {
+        rc = await publicClient.waitForTransactionReceipt({ hash });
+      } catch {
+        throw new Error('We could not confirm the payment yet. It was saved to Account, where you can check its status and get the links.');
+      }
+      if (rc.status !== 'success') { removeBatch(acct.address, batchId); throw new Error('The transaction failed.'); }
+      batch.took = secs(t0);
       saveBatch(acct.address, batch);
       pushHistory(acct, { type: 'payment', batchId, hash, kind, createdAt: batch.createdAt, expiresAt: batch.expiresAt, items: batch.items.map((i) => ({ id: i.id, handle: i.handle })) });
       setResult(batch);

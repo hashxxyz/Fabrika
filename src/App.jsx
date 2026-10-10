@@ -77,7 +77,7 @@ export default function App() {
         </div>
       </header>
       <main className={landing || isClaim ? 'hero' : 'app-main'}>
-        <div className="wrap" key={hv}>{page}</div>
+        <div className="wrap" key={path === '/account' || path === '/' ? hv : 0}>{page}</div>
       </main>
       <footer className="wrap foot">
         <span>Built on Monad. Testnet only: MON here has no value.</span>
