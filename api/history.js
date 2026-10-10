@@ -41,6 +41,9 @@ const post = route('POST', async (req) => {
     }));
     if (!(await kvLock(`hist:seen:${b.batchId}`, YEAR))) return { ok: true };
     const sender = checked[0].sender;
+    // X payments are also indexed by the recipient's tag, so /api/pending can find them when that X account signs in.
+    // Only the allocation id is stored; amount, status and expiry are always read from the chain.
+    if (kind === 'x') await Promise.all(checked.map((c, i) => kvPush(`pend:${tagOf(items[i].handle, 'x')}`, { id: c.id, at: Date.now() }, 100)));
     await kvPush(`hist:pay:${sender}`, {
       batchId: b.batchId, hash: String(b.hash || ''), kind, createdAt: Number(b.createdAt) || Date.now(), expiresAt: Number(b.expiresAt) || 0,
       items: checked.map(({ id, handle, amount }) => ({ id, kind, handle, amount })),
