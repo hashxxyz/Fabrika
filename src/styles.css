@@ -222,3 +222,36 @@ details.paste textarea { margin-top:10px; }
 .btn:focus-visible,.pill:focus-visible,.tab:focus-visible,.copy:focus-visible,a:focus-visible,textarea:focus-visible,select:focus-visible,
 .seg button:focus-visible,input:focus-visible { outline-color:var(--monad); }
 .badge i { border-color:var(--monad); }
+
+/* ===== More Monad purple (about 20-25% of the screen, light and dark) =====
+   Rule: purple on the big surfaces (balance card, hero, cards, page glow), neutral for text and inputs. */
+:root {
+  --monad-tint:#F3F0FF; --monad-line:#DDD6FD; --monad-wash:rgba(131,110,249,.18);
+  --silk-1:#F4F1FF; --silk-2:#DDD5FE; --silk-3:#C7BBFD;
+  --monad-grad:linear-gradient(135deg,#8C77FA 0%,#6A52EE 55%,#5238D8 100%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --monad-tint:#17132E; --monad-line:#322A66; --monad-wash:rgba(131,110,249,.26);
+    --silk-1:#120E26; --silk-2:#221A52; --silk-3:#3A2C8F; --glass:rgba(23,19,46,.66);
+    --monad-grad:linear-gradient(135deg,#7A63F6 0%,#5A43E0 55%,#3F2BB8 100%);
+  }
+}
+:root[data-theme="dark"] {
+  --monad-tint:#17132E; --monad-line:#322A66; --monad-wash:rgba(131,110,249,.26);
+  --silk-1:#120E26; --silk-2:#221A52; --silk-3:#3A2C8F; --glass:rgba(23,19,46,.66);
+  --monad-grad:linear-gradient(135deg,#7A63F6 0%,#5A43E0 55%,#3F2BB8 100%);
+}
+body { background:radial-gradient(120% 520px at 50% 0%, var(--monad-wash), transparent 72%) no-repeat, var(--bg); }
+.card, .wallet, .slip { background:var(--monad-tint); border-color:var(--monad-line); }
+.pill, .btn.ghost, .copy, .badge { border-color:var(--monad-line); }
+.tabs { border-bottom-color:var(--monad-line); }
+.tabbar, header.top { border-color:var(--monad-line); }
+.balcard { background:var(--monad-grad); color:#fff; box-shadow:0 10px 30px -12px var(--monad); }
+.balcard .k, .balcard .big small { color:#fff; opacity:.82; }
+.balcard .copy { color:#fff; border-color:rgba(255,255,255,.55); }
+.balcard .btn:not(.ghost) { background:#fff; color:#4B33C9; border-color:#fff; }
+.balcard .btn.ghost { color:#fff; border-color:rgba(255,255,255,.55); }
+.callout { background:var(--bg); border-color:var(--monad-line); }
+.callout.warn { border-color:var(--alert); }
+.receipt { background:var(--monad-tint); border-color:var(--monad-line); border-top-color:var(--monad); }

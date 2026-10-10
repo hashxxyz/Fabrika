@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy, useWallets, useExportWallet } from '@privy-io/react-auth';
 import { createWalletClient, custom } from 'viem';
 import { monadTestnet, publicClient } from './chain.js';
 
 export default function useAccount() {
   const { ready, authenticated, login, logout, getAccessToken, user, linkTwitter } = usePrivy();
   const { wallets } = useWallets();
+  const { exportWallet } = useExportWallet();
   const wallet = wallets.find((w) => w.walletClientType === 'privy') || wallets[0];
   const address = wallet?.address;
   const [balance, setBalance] = useState(null);
@@ -49,7 +50,11 @@ export default function useAccount() {
     return createWalletClient({ account: address, chain: monadTestnet, transport: custom(provider) });
   }, [wallet, address]);
 
+  // Only wallets Privy created for the user can be exported. Privy opens its own secure window; this app never sees the key.
+  const canExport = wallet?.walletClientType === 'privy';
+  const exportKey = useCallback(() => exportWallet({ address }), [exportWallet, address]);
+
   const xName = user?.twitter?.username || '';
   const label = user?.email?.address || user?.google?.email || (xName ? `@${xName}` : '');
-  return { welcome, ready, authenticated, login, logout, getAccessToken, wallet, address, balance, refresh, getClient, label, linkTwitter, xName };
+  return { welcome, ready, authenticated, login, logout, getAccessToken, wallet, address, balance, refresh, getClient, label, linkTwitter, xName, canExport, exportKey };
 }
