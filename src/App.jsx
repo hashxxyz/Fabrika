@@ -81,7 +81,9 @@ export default function App() {
       </main>
       <footer className="wrap foot">
         <span>Built on Monad. Testnet only: MON here has no value.</span>
-        <span><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Get test MON</a> &nbsp; <a href="https://testnet.monadvision.com" target="_blank" rel="noopener">Explorer</a></span>
+        {path === '/' && (
+          <span><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Get test MON</a> &nbsp; <a href="https://testnet.monadvision.com" target="_blank" rel="noopener">Explorer</a></span>
+        )}
       </footer>
       {!isClaim && (
         <nav className="tabbar" aria-label="Main">
