@@ -1,0 +1,1 @@
+The cover adjudicator approves claims inside the app: open the policy link while signed in with the adjudicator wallet, enter the payout, and press Approve claim. The wallet signs the approval. Send the result to the covered person. They paste it on the same page to be paid.
