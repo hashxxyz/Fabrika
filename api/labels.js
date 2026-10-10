@@ -26,7 +26,7 @@ const post = route('POST', async (req) => {
   const a = await owned(req, b.address);
   const key = String(b.key || '').toLowerCase();
   if (!KEY_RE.test(key)) throw new HttpError(400, 'Bad request.');
-  const name = String(b.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40);
+  const name = String(b.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
   const k = `lbl:${a}`;
   if (!name) { await kvHdel(k, key); return { ok: true }; }
   if (!(await kvHexists(k, key)) && (await kvHlen(k)) >= MAX_LABELS) throw new HttpError(400, 'Too many saved names. Remove some first.');

@@ -10,6 +10,7 @@ import {
 
 const YEAR = 365 * 24 * 3600;
 const HANDLE_RE = /^[a-z0-9_]{1,32}$/;
+const cleanNote = (s) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
 
 const get = route('GET', async (req) => {
   const did = await verifyPrivy(req);
@@ -37,7 +38,7 @@ const post = route('POST', async (req) => {
       if (!ID_RE.test(it?.id || '') || !HANDLE_RE.test(String(it?.handle || ''))) throw new HttpError(400, 'Bad request.');
       const a = await readAllocation(it.id);
       if (a.status === 0 || a.batchId.toLowerCase() !== b.batchId.toLowerCase() || !mine(a.sender) || a.tag !== tagOf(it.handle, kind)) throw new HttpError(403, 'That payment is not yours.');
-      return { id: it.id, handle: String(it.handle), amount: a.amount.toString(), sender: a.sender.toLowerCase() };
+      return { id: it.id, handle: String(it.handle), amount: a.amount.toString(), sender: a.sender.toLowerCase(), note: cleanNote(it.note) };
     }));
     if (!(await kvLock(`hist:seen:${b.batchId}`, YEAR))) return { ok: true };
     const sender = checked[0].sender;
@@ -46,7 +47,7 @@ const post = route('POST', async (req) => {
     if (kind === 'x') await Promise.all(checked.map((c, i) => kvPush(`pend:${tagOf(items[i].handle, 'x')}`, { id: c.id, at: Date.now() }, 100)));
     await kvPush(`hist:pay:${sender}`, {
       batchId: b.batchId, hash: String(b.hash || ''), kind, createdAt: Number(b.createdAt) || Date.now(), expiresAt: Number(b.expiresAt) || 0,
-      items: checked.map(({ id, handle, amount }) => ({ id, kind, handle, amount })),
+      items: checked.map(({ id, handle, amount, note }) => ({ id, kind, handle, amount, ...(note ? { note } : {}) })),
     });
     return { ok: true };
   }
@@ -67,7 +68,7 @@ const post = route('POST', async (req) => {
     const tx = await publicClient.getTransaction({ hash: b.hash }).catch(() => null);
     if (!tx || !tx.to || !mine(tx.from)) throw new HttpError(403, 'That transfer is not yours.');
     if (!(await kvLock(`hist:seen:${b.hash}`, YEAR))) return { ok: true };
-    await kvPush(`hist:tr:${tx.from.toLowerCase()}`, { hash: b.hash, to: tx.to, amount: tx.value.toString(), at: Date.now() });
+    await kvPush(`hist:tr:${tx.from.toLowerCase()}`, { hash: b.hash, to: tx.to, amount: tx.value.toString(), at: Date.now(), ...(cleanNote(b.note) ? { note: cleanNote(b.note) } : {}) });
     return { ok: true };
   }
 
