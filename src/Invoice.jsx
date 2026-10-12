@@ -6,7 +6,7 @@ import { Link } from './router.jsx';
 import Gate from './Gate.jsx';
 import { pushHistory } from './history.js';
 import {
-  MAX_ITEMS, totals, parseQty, parseAmount, makeDetails, chainNote, nextNumber, bumpNumber, loadBiz, saveBiz, payLink, money,
+  MAX_ITEMS, totals, parseQty, parseAmount, makeDetails, chainNote, loadBiz, saveBiz, payLink, money,
 } from './invoiceLib.js';
 
 const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
@@ -17,7 +17,6 @@ const blankItem = () => ({ d: '', q: '1', p: '' });
 export default function Invoice({ acct, toast }) {
   const saved = useMemo(loadBiz, []);
   const [biz, setBiz] = useState(saved.name || '');
-  const [no, setNo] = useState(nextNumber);
   const [cust, setCust] = useState('');
   const [email, setEmail] = useState('');
   const [items, setItems] = useState([blankItem()]);
@@ -57,7 +56,6 @@ export default function Invoice({ acct, toast }) {
     const { sub, disc: dApplied, total } = totals(rows, 0, discount);
     if (discount > sub) return setErr('The discount is bigger than the items total.');
     if (total <= 0n) return setErr('The total must be more than zero.');
-    if (!no.trim()) return setErr('Give the invoice a number.');
     try {
       setBusy('Confirm…');
       const wc = await acct.getClient();
@@ -69,16 +67,15 @@ export default function Invoice({ acct, toast }) {
         expiresAt = BigInt(Math.floor(end.getTime() / 1000));
         if (Number(expiresAt) <= (await chainNow()) + 60) throw new Error('The due date must be in the future.');
       }
-      const note = chainNote(no.trim(), rows);
+      const note = chainNote(rows);
       const hash = await wc.writeContract({ address: PAY, abi: payAbi, functionName: 'createRequest', args: [id, total, expiresAt, note] });
       setBusy('Creating…');
       const rc = await publicClient.waitForTransactionReceipt({ hash });
       if (rc.status !== 'success') throw new Error('The transaction failed.');
-      const d = makeDetails({ biz, no, name: cust, email, items: rows, taxBps: 0, discount: dApplied, notes, issued: Math.floor(Date.now() / 1000) });
+      const d = makeDetails({ biz, name: cust, email, items: rows, taxBps: 0, discount: dApplied, notes, issued: Math.floor(Date.now() / 1000) });
       const inv = { id, hash, amount: total.toString(), note, createdAt: Date.now(), expiresAt: Number(expiresAt), d };
       saveInvoice(acct.address, inv);
       saveBiz({ name: biz.trim(), notes });
-      bumpNumber(no);
       pushHistory(acct, { type: 'invoice', id });
       setMade(inv);
     } catch (e) {
@@ -89,20 +86,20 @@ export default function Invoice({ acct, toast }) {
   }
 
   function again() {
-    setMade(null); setNo(nextNumber()); setCust(''); setEmail(''); setItems([blankItem()]); setDisc(''); setDue(inDays(7)); setNoDue(false);
+    setMade(null); setCust(''); setEmail(''); setItems([blankItem()]); setDisc(''); setDue(inDays(7)); setNoDue(false);
   }
 
   if (made) {
     const url = payLink(made.id, made.d);
-    const text = `${made.d.b ? `${made.d.b}: ` : ''}Invoice ${made.d.n} for ${money(made.amount)}. Pay here:`;
-    const mail = made.d.e ? `mailto:${made.d.e}?subject=${encodeURIComponent(`Invoice ${made.d.n}${made.d.b ? ` from ${made.d.b}` : ''}`)}&body=${encodeURIComponent(`${text}\n\n${url}`)}` : '';
+    const text = `${made.d.b ? `${made.d.b}: ` : ''}Invoice for ${money(made.amount)}. Pay here:`;
+    const mail = made.d.e ? `mailto:${made.d.e}?subject=${encodeURIComponent(`Invoice${made.d.b ? ` from ${made.d.b}` : ''}`)}&body=${encodeURIComponent(`${text}\n\n${url}`)}` : '';
     return (
       <Gate acct={acct} title="Invoice">
         <section className="col">
           <div className="card">
             <div className="done-top">
               <span className="okmark">{CHECK}</span>
-              <h2>Invoice {made.d.n} ready</h2>
+              <h2>Invoice ready</h2>
               <span className="speed">{money(made.amount)}{made.d.c ? ` · ${made.d.c}` : ''}</span>
             </div>
             <p className="sub" style={{ margin: 0 }}>Send this link. They see the full invoice, pay in one tap, and it lands in your account.</p>
@@ -137,11 +134,7 @@ export default function Invoice({ acct, toast }) {
           <h3>From</h3>
           <div className="field">
             <label htmlFor="inv-biz">Your name or business</label>
-            <input id="inv-biz" value={biz} onChange={(e) => setBiz(e.target.value)} placeholder="Ada Studio" maxLength={60} autoComplete="off" />
-          </div>
-          <div className="field">
-            <label htmlFor="inv-no">Invoice number</label>
-            <input id="inv-no" value={no} onChange={(e) => setNo(e.target.value)} maxLength={24} autoComplete="off" />
+            <input id="inv-biz" value={biz} onChange={(e) => setBiz(e.target.value)} maxLength={60} autoComplete="off" />
           </div>
         </div>
 
@@ -149,11 +142,11 @@ export default function Invoice({ acct, toast }) {
           <h3>Bill to</h3>
           <div className="field">
             <label htmlFor="inv-cust">Customer name</label>
-            <input id="inv-cust" value={cust} onChange={(e) => setCust(e.target.value)} placeholder="Tunde Bakare" maxLength={60} autoComplete="off" />
+            <input id="inv-cust" value={cust} onChange={(e) => setCust(e.target.value)} maxLength={60} autoComplete="off" />
           </div>
           <div className="field">
             <label htmlFor="inv-email">Customer email (optional)</label>
-            <input id="inv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tunde@example.com" maxLength={80} autoComplete="off" />
+            <input id="inv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={80} autoComplete="off" />
           </div>
         </div>
 
@@ -161,7 +154,7 @@ export default function Invoice({ acct, toast }) {
           <h3>Items</h3>
           {items.map((it, i) => (
             <div className="li" key={i}>
-              <input className="li-d" aria-label={`Item ${i + 1} description`} value={it.d} onChange={(e) => setItem(i, 'd', e.target.value)} placeholder="Logo design" maxLength={80} autoComplete="off" />
+              <input className="li-d" aria-label={`Item ${i + 1} description`} value={it.d} onChange={(e) => setItem(i, 'd', e.target.value)} placeholder="Description" maxLength={80} autoComplete="off" />
               <input aria-label="Quantity" value={it.q} onChange={(e) => setItem(i, 'q', e.target.value)} placeholder="Qty" inputMode="numeric" autoComplete="off" />
               <input aria-label="Price each in MON" value={it.p} onChange={(e) => setItem(i, 'p', e.target.value)} placeholder="Price (MON)" inputMode="decimal" autoComplete="off" />
               <button className="li-x" type="button" aria-label={`Remove item ${i + 1}`} disabled={items.length === 1} onClick={() => setItems((xs) => xs.filter((_, j) => j !== i))}>×</button>
@@ -170,7 +163,7 @@ export default function Invoice({ acct, toast }) {
           <button className="btn ghost" type="button" disabled={items.length >= MAX_ITEMS} onClick={() => setItems((xs) => [...xs, blankItem()])}>Add item</button>
           <div className="field">
             <label htmlFor="inv-disc">Discount (MON)</label>
-            <input id="inv-disc" value={disc} onChange={(e) => setDisc(e.target.value)} placeholder="0" inputMode="decimal" autoComplete="off" />
+            <input id="inv-disc" value={disc} onChange={(e) => setDisc(e.target.value)} inputMode="decimal" autoComplete="off" />
           </div>
           <div>
             <div className="set-row"><span>Subtotal</span><span>{money(live.sub)}</span></div>
@@ -188,7 +181,7 @@ export default function Invoice({ acct, toast }) {
           <label className="check"><input type="checkbox" checked={noDue} onChange={(e) => setNoDue(e.target.checked)} /> No deadline</label>
           <div className="field">
             <label htmlFor="inv-notes">Notes or payment terms (optional)</label>
-            <textarea id="inv-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Thank you. Work starts once paid." maxLength={300} />
+            <textarea id="inv-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} />
           </div>
           <button className="btn" type="button" onClick={submit} disabled={!!busy || !acct.address}>{busy || `Create invoice · ${money(live.total)}`}</button>
           {err && <p className="err" role="alert" style={{ margin: 0 }}>{err}</p>}

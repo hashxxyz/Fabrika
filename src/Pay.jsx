@@ -75,7 +75,7 @@ export default function Pay({ acct }) {
           <>
             <div className="inv-doc">
               <div className="card-head"><h3>{rich && det.b ? det.b : 'Invoice'}</h3><Badge>{paid ? 'Paid' : PAY_STATUS[info.status]}</Badge></div>
-              {rich && <p className="note" style={{ margin: 0 }}>Invoice {det.n}{det.s ? ` · Issued ${new Date(det.s * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' })}` : ''}</p>}
+              {rich && det.s ? <p className="note" style={{ margin: 0 }}>Issued {new Date(det.s * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p> : null}
               <div className="slip-amt" style={{ margin: 0 }}>{fmtMon(info.amount)}<small>MON</small></div>
               {!rich && <p className="sub" style={{ margin: 0 }}>{info.note}</p>}
               <div>
@@ -101,8 +101,8 @@ export default function Pay({ acct }) {
             <button className="btn ghost no-print" type="button" onClick={() => window.print()}>Download or print</button>
             {paid && (
               <ReceiptCard
-                title={rich ? `Invoice ${det.n} paid` : 'Invoice paid'} amount={info.amount} hash={paid.hash} took={paid.took}
-                rows={[['Paid to', verified || shortAddr(info.recipient)], (rich ? det.n : info.note) ? ['For', rich ? `Invoice ${det.n}` : info.note] : null, ['From', shortAddr(acct.address)]]}
+                title="Invoice paid" amount={info.amount} hash={paid.hash} took={paid.took}
+                rows={[['Paid to', verified || shortAddr(info.recipient)], info.note ? ['For', info.note] : null, ['From', shortAddr(acct.address)]]}
               />
             )}
             {open && !paid && (

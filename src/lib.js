@@ -28,7 +28,7 @@ export function parseAmount(s) {
   return w > 0n ? w : null;
 }
 
-// One recipient per line: "@ada 2.5" or "ada, 2.5"
+// One recipient per line: "@username 2.5"
 export function parseLines(text, kind = 'telegram') {
   const k = KINDS[kind] || KINDS.telegram;
   const rows = [], errors = [], seen = new Set();

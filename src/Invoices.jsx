@@ -60,17 +60,17 @@ export default function Invoices({ acct, toast }) {
       const s = status[i.id]?.s;
       if (filter !== 'all' && !(s && inFilter(filter, s))) return false;
       if (!t) return true;
-      return [i.d?.n, i.d?.c, i.d?.e, i.note].some((x) => String(x || '').toLowerCase().includes(t));
+      return [i.d?.c, i.d?.e, i.note].some((x) => String(x || '').toLowerCase().includes(t));
     });
   }, [list, status, filter, q]);
 
   function exportCsv() {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['Number', 'Customer', 'Email', 'Description', 'Amount (MON)', 'Status', 'Created', 'Due', 'Paid on', 'Paid by']];
+    const rows = [['Customer', 'Email', 'Description', 'Amount (MON)', 'Status', 'Created', 'Due', 'Paid on', 'Paid by']];
     list.forEach((i) => {
       const st = status[i.id];
       rows.push([
-        i.d?.n || '', i.d?.c || '', i.d?.e || '', i.note, money(i.amount).replace(' MON', '').replace(/,/g, ''), st ? PAY_STATUS[st.s] : '',
+        i.d?.c || '', i.d?.e || '', i.note, money(i.amount).replace(' MON', '').replace(/,/g, ''), st ? PAY_STATUS[st.s] : '',
         new Date(i.createdAt).toISOString().slice(0, 10), i.expiresAt ? new Date(i.expiresAt * 1000).toISOString().slice(0, 10) : '',
         st?.s === 2 ? new Date(st.paidAt * 1000).toISOString().slice(0, 10) : '', st?.s === 2 ? st.payer : '',
       ]);
@@ -95,7 +95,7 @@ export default function Invoices({ acct, toast }) {
       <div className="seg" role="tablist" aria-label="Filter invoices">
         {FILTERS.map(([v, l]) => <button key={v} type="button" role="tab" aria-selected={filter === v} onClick={() => setFilter(v)}>{l}</button>)}
       </div>
-      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search number, customer or item" aria-label="Search invoices" autoComplete="off" />
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customer or item" aria-label="Search invoices" autoComplete="off" />
       <div>
         {!shown.length && <p className="note" style={{ margin: 0 }}>No invoices match.</p>}
         {shown.map((inv) => {
@@ -103,7 +103,7 @@ export default function Invoices({ acct, toast }) {
           const link = payLink(inv.id, inv.d);
           return (
             <div className="act" key={inv.id}>
-              <span className="t">{inv.d?.n ? `${inv.d.n}${inv.d.c ? ` · ${inv.d.c}` : ''}` : inv.note}</span>
+              <span className="t">{inv.d?.c ? `${inv.d.c} · ${inv.note}` : inv.note}</span>
               <span className="a">{money(inv.amount)}</span>
               <span className="s">
                 {st ? <Badge>{PAY_STATUS[st.s]}</Badge> : '…'}

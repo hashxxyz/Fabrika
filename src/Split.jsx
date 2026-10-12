@@ -65,10 +65,10 @@ function Create({ acct, toast }) {
       <section className="col">
         <div><h1 className="title">Split a bill</h1><p className="sub">You paid. Everyone else sends you their share.</p></div>
         <div className="card">
-          <div className="field"><label htmlFor="sp-total">Total bill (MON)</label><input id="sp-total" value={total} onChange={(e) => setTotal(e.target.value)} inputMode="decimal" placeholder="30" autoComplete="off" /></div>
+          <div className="field"><label htmlFor="sp-total">Total bill (MON)</label><input id="sp-total" value={total} onChange={(e) => setTotal(e.target.value)} inputMode="decimal" autoComplete="off" /></div>
           <div className="field"><label htmlFor="sp-n">People sharing, including you</label><input id="sp-n" value={people} onChange={(e) => setPeople(e.target.value)} inputMode="numeric" autoComplete="off" /></div>
           {each && <p className="callout">Each person pays {formatEther(each)} MON. You get it from {n - 1} people.</p>}
-          <div className="field"><label htmlFor="sp-note">What is it for?</label><input id="sp-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Dinner at Mama Put" maxLength={120} autoComplete="off" /></div>
+          <div className="field"><label htmlFor="sp-note">What is it for?</label><input id="sp-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={120} autoComplete="off" /></div>
           <div className="field"><label htmlFor="sp-due">Pay within</label><select id="sp-due" value={due} onChange={(e) => setDue(e.target.value)}>{DUE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <button className="btn" type="button" onClick={submit} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Create split link'}</button>
           <Err>{tx.err}</Err>

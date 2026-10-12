@@ -79,10 +79,10 @@ function Create({ acct, toast }) {
         <div><h1 className="title">Goal savings</h1><p className="sub">Save toward a goal. Your friends confirm it. Your rate goes up.</p></div>
         {data && <p className="callout">Base rate {pct(data.base)} a year. Confirmed goal {pct(data.boost)} a year. Rewards pool: {fmtMon(data.pool)} MON.</p>}
         <div className="card">
-          <div className="field"><label htmlFor="v-a">Amount to save (MON)</label><input id="v-a" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" placeholder="20" autoComplete="off" /></div>
-          <div className="field"><label htmlFor="v-g">Your goal</label><input id="v-g" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Run 5km three times a week for a month" maxLength={120} autoComplete="off" /></div>
+          <div className="field"><label htmlFor="v-a">Amount to save (MON)</label><input id="v-a" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" autoComplete="off" /></div>
+          <div className="field"><label htmlFor="v-g">Your goal</label><input id="v-g" value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={120} autoComplete="off" /></div>
           <div className="field"><label htmlFor="v-b">Goal date</label><input id="v-b" type="date" min={todayStr(1)} value={by} onChange={(e) => setBy(e.target.value)} /></div>
-          <div className="field"><label htmlFor="v-f">Friends who can confirm (wallet addresses)</label><textarea id="v-f" value={friends} onChange={(e) => setFriends(e.target.value)} placeholder="One address per line" /></div>
+          <div className="field"><label htmlFor="v-f">Friends who can confirm (wallet addresses)</label><textarea id="v-f" value={friends} onChange={(e) => setFriends(e.target.value)} /></div>
           <div className="field"><label htmlFor="v-n">How many must confirm</label><input id="v-n" value={need} onChange={(e) => setNeed(e.target.value)} inputMode="numeric" /></div>
           <button className="btn" type="button" onClick={submit} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Lock savings'}</button>
           <Err>{tx.err}</Err>

@@ -5,7 +5,7 @@ import { fmtMon, shortAddr, recentActivity } from './lib.js';
 import { FAUCET } from './chain.js';
 import Pending from './Pending.jsx';
 
-const SAMPLE = [['@ada', '2.5', 'Telegram'], ['@tunde', '1', 'X'], ['0x4f3a…91c2', '0.5', 'Wallet']];
+const SAMPLE = [['@telegram_user', '2.5', 'Telegram'], ['@x_user', '1', 'X'], ['0x4f3a…91c2', '0.5', 'Wallet']];
 
 export default function Home({ acct, toast }) {
   return acct.authenticated ? <Overview acct={acct} toast={toast} /> : <Landing acct={acct} />;

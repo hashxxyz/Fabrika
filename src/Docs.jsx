@@ -81,7 +81,7 @@ export default function Docs() {
       <p>An invoice is a payment request with an exact amount and a deadline. You share one link and the other person pays from that page.</p>
       <p><b>To ask for money:</b> go to <Link to="/invoice">Invoice</Link>, enter the amount, a short note and the deadline, then share the link. When they pay, the invoice is marked paid.</p>
       <p><b>To pay one:</b> open the link, sign in, read who is asking and what it is for, then pay the exact amount before the deadline. An invoice can be paid only once.</p>
-      <p>The pay page shows who is asking, such as "Requested by @ada (verified on X)" or a masked email. If Fabrika cannot verify the person, it says "Not verified". Only pay people you know.</p>
+      <p>The pay page shows who is asking, such as "From @username (verified on X)" or a masked email. If Fabrika cannot verify the person, it says "Not verified". Only pay people you know.</p>
 
       <h2 id="receipts">Receipts, history and wallet export</h2>
       <p>Every payment gives you a Fabrika receipt inside the app, so you never need to open a blockchain explorer.</p>

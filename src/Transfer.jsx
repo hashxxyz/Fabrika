@@ -184,14 +184,14 @@ function HandleForm({ kind, acct, toast }) {
               ? <button className="x-btn" type="button" aria-label="Remove person" onClick={() => setPeople((l) => l.filter((_, j) => j !== i))}>×</button>
               : <span />}
             <input value={p.amt} onChange={(e) => set(i, 'amt', e.target.value)} placeholder="Amount in MON" aria-label={`Amount ${i + 1}`} inputMode="decimal" autoComplete="off" />
-            <input value={p.note} onChange={(e) => set(i, 'note', e.target.value)} placeholder="Description (optional), e.g. Lunch" aria-label={`Description ${i + 1}`} maxLength={80} autoComplete="off" />
+            <input value={p.note} onChange={(e) => set(i, 'note', e.target.value)} placeholder="Description (optional)" aria-label={`Description ${i + 1}`} maxLength={80} autoComplete="off" />
             {rowErr[i] && (tried || (p.name && p.amt)) && <span className="person-err">{rowErr[i]}</span>}
           </div>
         ))}
         {people.length < 100 && <button className="add-btn" type="button" onClick={() => setPeople((l) => [...l, blank()])}>+ Add another person</button>}
         <details className="paste">
           <summary>Paste a list instead</summary>
-          <textarea rows={4} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={'@ada 2.5\n@tunde 1\n@mike 0.5'} autoCapitalize="off" autoComplete="off" spellCheck={false} />
+          <textarea rows={4} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="One per line: username and amount" autoCapitalize="off" autoComplete="off" spellCheck={false} />
           <button className="btn ghost sm" type="button" onClick={applyPaste} style={{ marginTop: 8 }}>Use this list</button>
         </details>
       </div>
@@ -273,15 +273,15 @@ function WalletForm({ acct, toast }) {
       <h3>Send to a wallet</h3>
       <div className="field">
         <label htmlFor="to">Wallet address</label>
-        <input id="to" value={to} onChange={(e) => setTo(e.target.value)} placeholder="0x…" autoCapitalize="off" autoComplete="off" spellCheck={false} />
+        <input id="to" value={to} onChange={(e) => setTo(e.target.value)} autoCapitalize="off" autoComplete="off" spellCheck={false} />
       </div>
       <div className="field">
         <label htmlFor="amt">Amount (MON)</label>
-        <input id="amt" value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="1.5" inputMode="decimal" autoComplete="off" />
+        <input id="amt" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" autoComplete="off" />
       </div>
       <div className="field">
         <label htmlFor="memo">Description (optional)</label>
-        <input id="memo" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Rent, May" maxLength={80} autoComplete="off" />
+        <input id="memo" value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} autoComplete="off" />
       </div>
       <p className="callout warn">This goes straight to the wallet. There is no claim step and no refund, so double-check the address.</p>
       <button className="btn" type="button" onClick={submit} disabled={!!busy}>{busy || 'Send'}</button>
