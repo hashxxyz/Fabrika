@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ADDR, savingsAbi } from './abis.js';
-import { chainNow } from './chain.js';
+import { chainNow, FAUCET } from './chain.js';
 import { parseAmount, randomId, cleanNote, fmtMon, shortAddr } from './lib.js';
 import { param, ID_RE, read, useTx, useLive, saveMine, loadMine, NotOn, Share, Done, Row, Err, Bar, same, dayEnd, todayStr, parseAddresses } from './kit.jsx';
 import { Link } from './router.jsx';
@@ -145,31 +145,50 @@ function RewardsCard({ acct, toast, pool, onDone }) {
 
 /* ---------------------------------------------------------------- Create */
 
+const DURATIONS = [7, 30, 60, 90, 180, 365];
+// Interest for `days` at an annual rate in basis points. Same maths as the contract (365-day year).
+const earn = (amount, bps, days) => (amount * BigInt(bps) * BigInt(days)) / (10000n * 365n);
+
 function Create({ acct, toast }) {
+  const [step, setStep] = useState(1);
   const [amt, setAmt] = useState('');
+  const [days, setDays] = useState(90);
+  const [custom, setCustom] = useState(false);
+  const [by, setBy] = useState('');
   const [goal, setGoal] = useState('');
   const [friends, setFriends] = useState('');
   const [need, setNeed] = useState('1');
-  const [by, setBy] = useState('');
   const [made, setMade] = useState(null);
   const tx = useTx(acct);
   const { data } = useLive(async () => ({
     base: await read(ADDR.savings, savingsAbi, 'baseBps'), boost: await read(ADDR.savings, savingsAbi, 'boostBps'),
   }), [], 20000);
 
+  const amount = parseAmount(amt);
+  const goalBy = custom ? dayEnd(by) : dayEnd(todayStr(days));
+  const nDays = custom ? Math.max(0, Math.ceil((goalBy * 1000 - Date.now()) / 86400000)) : days;
+  const short = !!amount && acct.balance != null && acct.balance < amount;
+  const base = data && amount && nDays ? earn(amount, data.base, nDays) : null;
+  const top = data && amount && nDays ? earn(amount, data.boost, nDays) : null;
+
+  function next() {
+    tx.setErr('');
+    if (!amount) return tx.setErr('Enter how much to lock, for example 20.');
+    if (!goalBy || goalBy * 1000 <= Date.now()) return tx.setErr('Pick an end date in the future.');
+    if (short) return tx.setErr('Your balance is lower than this amount. Add MON or lock less.');
+    setStep(2);
+  }
+
   async function submit() {
-    const amount = parseAmount(amt);
     const text = cleanNote(goal, 120);
     const { list, bad } = parseAddresses(friends);
-    const goalBy = dayEnd(by);
     const n = Number(need);
-    if (!amount) return tx.setErr('Enter how much to save, for example 20.');
     if (!text) return tx.setErr('Say what your goal is.');
     if (bad.length) return tx.setErr(`These are not wallet addresses: ${bad.slice(0, 2).join(', ')}`);
     if (list.length < 1 || list.length > 10) return tx.setErr('Add 1 to 10 friend wallet addresses.');
     if (list.some((a) => same(a, acct.address))) return tx.setErr('You cannot verify your own goal. Remove your address.');
     if (!Number.isInteger(n) || n < 1 || n > list.length) return tx.setErr(`Friends needed must be from 1 to ${list.length}.`);
-    if (!goalBy || goalBy <= (await chainNow())) return tx.setErr('Pick a goal date in the future.');
+    if (!goalBy || goalBy <= (await chainNow())) return tx.setErr('Pick an end date in the future.');
     const id = randomId();
     const r = await tx.run('Locking…', (wc) => wc.writeContract({ address: ADDR.savings, abi: savingsAbi, functionName: 'open', args: [id, list, n, BigInt(goalBy), text], value: amount }));
     if (!r) return;
@@ -191,28 +210,87 @@ function Create({ acct, toast }) {
     );
   }
 
+  if (step === 2) {
+    return (
+      <section className="col">
+        <div>
+          <h1 className="title">Who confirms your goal?</h1>
+          <p className="sub">Name friends who can vouch that you reached it. When enough confirm, your rate goes up.</p>
+        </div>
+        <div className="card">
+          <Row k="Locking" v={`${fmtMon(amount)} MON`} />
+          <Row k="Until" v={`${dateOf(goalBy)} (${nDays} days)`} />
+          {data && <Row k="Rate" v={`${pct(data.base)} a year, ${pct(data.boost)} when confirmed`} />}
+        </div>
+        <div className="card">
+          <div className="field"><label htmlFor="v-g">What are you saving for?</label><input id="v-g" value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={120} autoComplete="off" /></div>
+          <div className="field"><label htmlFor="v-f">Friends who can confirm (wallet addresses, one per line)</label><textarea id="v-f" value={friends} onChange={(e) => setFriends(e.target.value)} /></div>
+          <div className="field"><label htmlFor="v-n">How many must confirm</label><input id="v-n" value={need} onChange={(e) => setNeed(e.target.value)} inputMode="numeric" /></div>
+          <Err>{tx.err}</Err>
+          <button className="btn" type="button" onClick={submit} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Lock savings'}</button>
+          <button className="btn ghost" type="button" onClick={() => { tx.setErr(''); setStep(1); }} disabled={!!tx.busy}>Change amount or date</button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="col">
-      <div>
-        <h1 className="title">New goal</h1>
-        <p className="sub">Lock some MON toward something you want. You can withdraw any time.</p>
+      <h1 className="title">Lock funds</h1>
+
+      <div className="lk-block">
+        <label className="lk-q" htmlFor="lk-a">How much do you want to lock?</label>
+        <div className="lk-amt">
+          <input id="lk-a" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" autoComplete="off" placeholder="0" />
+          <small>MON</small>
+        </div>
+        {amount && base != null && (
+          <p className="lk-hint">
+            {short ? 'Add MON to your wallet to lock this and ' : 'You will '}earn about <b>{fmtMon(base, 6)} MON</b> after {nDays} days.
+            {short && <> <a href={FAUCET} target="_blank" rel="noopener">Add MON</a></>}
+          </p>
+        )}
       </div>
 
-      <div className="sv-intro">
-        <div><b>Get friends to confirm it</b><span>Name the people who can vouch that you reached your goal.</span></div>
-        <div><b>Earn more when it is confirmed</b><span>{data ? `Your rate goes from ${pct(data.base)} to ${pct(data.boost)} a year.` : 'Your rate goes up once enough friends confirm.'}</span></div>
+      <div className="lk-block">
+        <h2 className="lk-q">For how long?</h2>
+        <div className="lk-days">
+          {DURATIONS.map((d) => (
+            <button key={d} className="lk-day" type="button" aria-pressed={!custom && days === d} onClick={() => { setCustom(false); setDays(d); }}>
+              <b>{d} days</b>
+              <span>{amount && data ? `+${fmtMon(earn(amount, data.base, d), 4)} MON` : data ? `${pct(data.base)} p.a` : '…'}</span>
+            </button>
+          ))}
+        </div>
+        {custom ? (
+          <div className="field">
+            <label htmlFor="v-b">End date</label>
+            <input id="v-b" type="date" min={todayStr(1)} value={by} onChange={(e) => setBy(e.target.value)} />
+          </div>
+        ) : (
+          <button className="sv-link lk-own" type="button" onClick={() => setCustom(true)}>Pick your own end date</button>
+        )}
+        {custom && <button className="sv-link lk-own" type="button" onClick={() => setCustom(false)}>Use a set length instead</button>}
       </div>
 
       <div className="card">
-        <div className="field"><label htmlFor="v-g">What are you saving for?</label><input id="v-g" value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={120} autoComplete="off" /></div>
-        <div className="field"><label htmlFor="v-a">Amount to save (MON)</label><input id="v-a" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" autoComplete="off" /></div>
-        <div className="field"><label htmlFor="v-b">Goal date</label><input id="v-b" type="date" min={todayStr(1)} value={by} onChange={(e) => setBy(e.target.value)} /></div>
-        <div className="field"><label htmlFor="v-f">Friends who can confirm (wallet addresses, one per line)</label><textarea id="v-f" value={friends} onChange={(e) => setFriends(e.target.value)} /></div>
-        <div className="field"><label htmlFor="v-n">How many must confirm</label><input id="v-n" value={need} onChange={(e) => setNeed(e.target.value)} inputMode="numeric" /></div>
-        <button className="btn" type="button" onClick={submit} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Lock savings'}</button>
-        <Err>{tx.err}</Err>
-        <p className="note" style={{ margin: 0 }}>Yield comes from a rewards pool that people fund. If it runs low, yield is paid up to what is left. Your own money is never part of it.</p>
+        <div className="sumrow"><span>Interest to earn</span><b className="sv-pos">+{base == null ? '0' : fmtMon(base, 6)} MON</b></div>
+        {top != null && <p className="note" style={{ margin: 0 }}>At the base rate of {pct(data.base)} a year. If enough friends confirm your goal, up to +{fmtMon(top, 6)} MON.</p>}
       </div>
+
+      <div className="lk-from">
+        <span className="sv-ico">{LOCK}</span>
+        <div>
+          <div className="lk-from-k">Moving from</div>
+          <b>Your Fabrika wallet</b>
+          <div className={'lk-from-bal' + (short ? ' bad' : '')}>{acct.balance == null ? '…' : `${fmtMon(acct.balance)} MON`}{short && ' · Not enough balance'}</div>
+        </div>
+        {short && <a className="sv-link" href={FAUCET} target="_blank" rel="noopener">Add funds</a>}
+      </div>
+
+      <Err>{tx.err}</Err>
+      <button className="btn" type="button" onClick={next} disabled={!amount || short}>Continue</button>
+      <p className="note" style={{ margin: 0 }}>You can withdraw any time. Yield comes from a rewards pool that people fund. If it runs low, yield is paid up to what is left. Your own money is never part of it.</p>
     </section>
   );
 }

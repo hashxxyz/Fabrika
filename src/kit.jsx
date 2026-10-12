@@ -93,7 +93,7 @@ export function NotOn({ name }) {
       <div className="card">
         <h1 className="title">{name}</h1>
         <p className="sub">This feature is not switched on yet. Deploy its contract and set its address. See contracts/DEPLOY.md.</p>
-        <Link className="btn ghost" to="/explore">Back to Explore</Link>
+        <Link className="btn ghost" to="/">Back to Home</Link>
       </div>
     </section>
   );

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Stitch, Badge, BalanceEye, useHideBalance } from './ui.jsx';
 import { Link } from './router.jsx';
 import { fmtMon, shortAddr, recentActivity } from './lib.js';
-import { FAUCET } from './chain.js';
+import { FAUCET, PAY, explorer } from './chain.js';
+import { ADDR } from './abis.js';
 import Pending from './Pending.jsx';
 
 const SAMPLE = [['@telegram_user', '2.5', 'Telegram'], ['@x_user', '1', 'X'], ['0x4f3a…91c2', '0.5', 'Wallet']];
@@ -46,22 +47,44 @@ function Landing({ acct }) {
   );
 }
 
+const q = (d) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+const ACTIONS = [
+  { to: '/transfer', label: 'Send', fill: true, on: true, icon: q(<path d="M5 12h14M13 6l6 6-6 6" />) },
+  { to: '/save', label: 'Save', fill: true, on: !!ADDR.savings, icon: q(<><rect x="4" y="5" width="16" height="14" rx="3" /><circle cx="12" cy="12" r="2.5" /></>) },
+  { to: '/invoice', label: 'Invoice', fill: true, on: !!PAY, icon: q(<><path d="M7 3h8l4 4v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" /><path d="M15 3v4h4M9 12h6M9 16h6" /></>) },
+  { to: '/split', label: 'Split', fill: true, on: !!ADDR.split, icon: q(<><circle cx="8" cy="9" r="3" /><circle cx="17" cy="10" r="2.4" /><path d="M2.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M15 15c2.6-.4 4.7.8 5.5 3.5" /></>) },
+  { to: '/account', label: 'History', icon: q(<><path d="M4 12a8 8 0 108-8 8 8 0 00-6 2.7M4 4v4h4" /><path d="M12 8v4l3 2" /></>) },
+  { to: '/docs', label: 'Guide', icon: q(<><path d="M5 4h10a3 3 0 013 3v13H8a3 3 0 01-3-3z" /><path d="M9 9h5M9 13h5" /></>) },
+  { href: FAUCET, label: 'Get MON', icon: q(<path d="M12 3s6 6.2 6 10.5a6 6 0 11-12 0C6 9.2 12 3 12 3z" />) },
+  { href: 'EXPLORER', label: 'Explorer', icon: q(<><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>) },
+];
+
 function Overview({ acct, toast }) {
   const recent = acct.address ? recentActivity(acct.address, 5) : [];
   const { hidden, toggle } = useHideBalance();
+  const who = acct.label ? (acct.label.split('@')[0] || acct.label) : '';
   return (
-    <section className="col dash">
+    <section className="col home">
+      {who && <h1 className="title">Hi, {who}</h1>}
       <div className="balcard">
         <div className="balrow"><div className="k">Your balance</div><BalanceEye hidden={hidden} onToggle={toggle} /></div>
         <div className="big"><span aria-label={hidden ? 'Balance hidden' : undefined}>{acct.balance == null ? '…' : hidden ? '••••' : fmtMon(acct.balance)}</span><small>MON</small></div>
-        <div className="addr">{acct.address ? shortAddr(acct.address) : 'Setting up your account…'}</div>
+        <div className="addr">
+          <span>{acct.address ? shortAddr(acct.address) : 'Setting up your account…'}</span>
+          <a className="copy" href={FAUCET} target="_blank" rel="noopener">Add test MON</a>
+        </div>
       </div>
-      <div className="actions">
-        <Link className="btn" to="/transfer">Send money</Link>
-        <Link className="btn ghost" to="/explore">Explore more</Link>
-      </div>
+
+      <nav className="qa" aria-label="Quick actions">
+        {ACTIONS.map((a) => {
+          const body = <><span className={'ic' + (a.fill ? ' fill' : '')}>{a.icon}</span><span>{a.label}</span></>;
+          if (a.href) return <a key={a.label} href={a.href === 'EXPLORER' ? explorer.address(acct.address || '') : a.href} target="_blank" rel="noopener">{body}</a>;
+          return <Link key={a.label} to={a.to} data-off={a.on === false ? '1' : undefined}>{body}</Link>;
+        })}
+      </nav>
+
       <Pending acct={acct} toast={toast} />
-      <p className="note" style={{ margin: 0 }}>Need test MON? <a href={FAUCET} target="_blank" rel="noopener">Get some free</a>.</p>
+
       <div className="card">
         <div className="card-head"><h3>Recent activity</h3>{recent.length > 0 && <Link className="copy" to="/account">See all</Link>}</div>
         {recent.length === 0

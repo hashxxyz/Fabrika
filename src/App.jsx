@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import useAccount from './useAccount.js';
-import { Link, useRoute, goBack, previousPath } from './router.jsx';
+import { Link, useRoute, goBack, previousPath, navigate } from './router.jsx';
 import Home from './Home.jsx';
 import Transfer from './Transfer.jsx';
 import Account from './Account.jsx';
@@ -10,7 +10,6 @@ import Invoice from './Invoice.jsx';
 import Pay from './Pay.jsx';
 import ReceiptPage from './Receipt.jsx';
 import Docs from './Docs.jsx';
-import Explore from './Explore.jsx';
 import Split from './Split.jsx';
 import Savings from './Savings.jsx';
 import { shortAddr } from './lib.js';
@@ -21,15 +20,21 @@ const ico = (d) => (
 );
 const NAV = [
   ['/', 'Home', ico(<path d="M4 11l8-7 8 7v8a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z" />)],
-  ['/transfer', 'Send', ico(<path d="M5 12h14M13 6l6 6-6 6" />)],
-  ['/explore', 'Explore', ico(<><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></>)],
+  ['/save', 'Savings', ico(<><rect x="4" y="5" width="16" height="14" rx="3" /><circle cx="12" cy="12" r="2.5" /></>)],
+  ['/invoice', 'Invoice', ico(<><path d="M7 3h8l4 4v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" /><path d="M15 3v4h4M9 12h6M9 16h6" /></>)],
   ['/account', 'Account', ico(<><rect x="3" y="6" width="18" height="13" rx="3" /><path d="M3 10h18M16 14.5h2" /></>)],
   ['/settings', 'Settings', ico(<><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /></>)],
 ];
 
+// Old /explore links land on Home, where those actions now live.
+function Redirect({ to }) {
+  useEffect(() => { navigate(to, { replace: true }); }, [to]);
+  return null;
+}
+
 // Where Back goes when there is no earlier page in this visit (for example a page opened from a bookmark).
-const PARENT = { '/invoice': '/explore', '/split': '/explore', '/save': '/explore', '/receipt': '/account' };
-const NAMES = { '/': 'Home', '/transfer': 'Send', '/explore': 'Explore', '/account': 'Account', '/settings': 'Settings', '/invoice': 'Invoice', '/split': 'Split a bill', '/save': 'Goal savings', '/docs': 'Docs', '/receipt': 'Receipt' };
+const PARENT = { '/receipt': '/account' };
+const NAMES = { '/': 'Home', '/transfer': 'Send', '/account': 'Account', '/settings': 'Settings', '/invoice': 'Invoice', '/split': 'Split a bill', '/save': 'Goal savings', '/docs': 'Docs', '/receipt': 'Receipt' };
 const ARROW_LEFT = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
 );
@@ -64,7 +69,7 @@ export default function App() {
   else if (path === '/receipt') page = <ReceiptPage toast={showToast} />;
   else if (path.startsWith('/claim')) page = <Claim acct={acct} toast={showToast} />;
   else if (path === '/invoice') page = <Invoice acct={acct} toast={showToast} />;
-  else if (path === '/explore') page = <Explore />;
+  else if (path === '/explore') page = <Redirect to="/" />;
   else if (path === '/split') page = <Split acct={acct} toast={showToast} />;
   else if (path === '/save') page = <Savings acct={acct} toast={showToast} />;
   else if (path === '/transfer') page = <Transfer acct={acct} toast={showToast} />;
