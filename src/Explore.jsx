@@ -4,14 +4,8 @@ import { ADDR } from './abis.js';
 
 const ITEMS = [
   ['/transfer', 'Send to a name', 'Pay a Telegram or X username or a wallet. Unclaimed money comes back.', true],
-  ['/tip', 'Tip', 'A tip link for a creator, or tip one in a tap.', true],
-  ['/split', 'Split a bill', 'One link. Each person pays their own share. It lands with you.', !!ADDR.split],
   ['/invoice', 'Invoice', 'Ask for an exact amount and get paid.', !!PAY],
-  ['/gift', 'Programmable gift', 'Money that unlocks on a date or when someone confirms. Share it as a link.', !!ADDR.gift],
-  ['/pledge', 'Commitments and pools', 'Put money behind a goal. Alone, or with a group where finishers split the stakes of those who quit.', !!ADDR.pledge],
-  ['/isa', 'Income share', 'Back a friend. Get a share of their future income, up to a cap.', !!ADDR.isa],
-  ['/stream', 'Salary stream', 'Get paid every second. Withdraw whenever you want.', !!ADDR.stream],
-  ['/cover', 'Cover by the minute', 'Insure a laptop or a trip for a few hours. Or earn premiums as an underwriter.', !!ADDR.cover],
+  ['/split', 'Split a bill', 'One link. Each person pays their own share. It lands with you.', !!ADDR.split],
   ['/save', 'Goal savings', 'Your rate goes up when your friends confirm your goal.', !!ADDR.savings],
 ];
 

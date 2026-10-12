@@ -4,11 +4,14 @@ import { PAY, payAbi, publicClient, FAUCET, PAY_STATUS } from './chain.js';
 import { ReceiptCard } from './Receipt.jsx';
 import { fmtMon, fmtDate, shortAddr, cleanError } from './lib.js';
 import { Badge } from './ui.jsx';
+import { decodeDetails, detailItems, detailTotals, money } from './invoiceLib.js';
 
 const ID_RE = /^0x[0-9a-fA-F]{64}$/;
 
 export default function Pay({ acct }) {
-  const id = new URLSearchParams(location.search).get('i') || '';
+  const qs = new URLSearchParams(location.search);
+  const id = qs.get('i') || '';
+  const det = decodeDetails(qs.get('d'));
   const [info, setInfo] = useState(null);
   const [loadErr, setLoadErr] = useState('');
   const [busy, setBusy] = useState('');
@@ -57,6 +60,9 @@ export default function Pay({ acct }) {
     }
   }
 
+  const dt = det ? detailTotals(det) : null;
+  // Show the breakdown only when it adds up to exactly what the contract will charge.
+  const rich = !!(info && det && dt.total === info.amount);
   const verified = who && (who.x ? `@${who.x} (verified on X)` : who.email ? `${who.email} (verified email)` : '');
   const open = info && info.status === 1;
   const mine = info && acct.address && info.recipient.toLowerCase() === acct.address.toLowerCase();
@@ -67,22 +73,41 @@ export default function Pay({ acct }) {
       <div className="card">
         {loadErr ? <p className="err">{loadErr}</p> : !info ? <p className="note" style={{ margin: 0 }}>Loading invoice…</p> : (
           <>
-            <div className="card-head"><h3>Invoice</h3><Badge>{paid ? 'Paid' : PAY_STATUS[info.status]}</Badge></div>
-            <div className="slip-amt" style={{ margin: 0 }}>{fmtMon(info.amount)}<small>MON</small></div>
-            <p className="sub" style={{ margin: 0 }}>{info.note}</p>
-            <div>
-              <div className="set-row"><span>Requested by</span><span>{verified ? <b>{verified}</b> : who === null ? shortAddr(info.recipient) : <>Not verified · {shortAddr(info.recipient)}</>}</span></div>
-              <div className="set-row"><span>Pay by</span><span>{Number(info.expiresAt) ? fmtDate(info.expiresAt) : 'No deadline'}</span></div>
+            <div className="inv-doc">
+              <div className="card-head"><h3>{rich && det.b ? det.b : 'Invoice'}</h3><Badge>{paid ? 'Paid' : PAY_STATUS[info.status]}</Badge></div>
+              {rich && <p className="note" style={{ margin: 0 }}>Invoice {det.n}{det.s ? ` · Issued ${new Date(det.s * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' })}` : ''}</p>}
+              <div className="slip-amt" style={{ margin: 0 }}>{fmtMon(info.amount)}<small>MON</small></div>
+              {!rich && <p className="sub" style={{ margin: 0 }}>{info.note}</p>}
+              <div>
+                <div className="set-row"><span>From</span><span>{verified ? <b>{verified}</b> : who === null ? shortAddr(info.recipient) : <>Not verified · {shortAddr(info.recipient)}</>}</span></div>
+                {rich && (det.c || det.e) && <div className="set-row"><span>Bill to</span><span>{det.c}{det.c && det.e ? <br /> : null}{det.e}</span></div>}
+                <div className="set-row"><span>Pay by</span><span>{Number(info.expiresAt) ? fmtDate(info.expiresAt) : 'No deadline'}</span></div>
+              </div>
+              {rich && (
+                <div className="inv-lines">
+                  <div className="inv-l head"><span>Item</span><span>Qty</span><span>Amount</span></div>
+                  {detailItems(det).map((it, i) => (
+                    <div className="inv-l" key={i}><span>{it.d}<small>{money(it.p)} each</small></span><span>{it.q}</span><span>{money(BigInt(it.q) * it.p)}</span></div>
+                  ))}
+                  <div className="set-row"><span>Subtotal</span><span>{money(dt.sub)}</span></div>
+                  {dt.disc > 0n && <div className="set-row"><span>Discount</span><span>−{money(dt.disc)}</span></div>}
+                  {dt.tax > 0n && <div className="set-row"><span>Tax ({det.x / 100}%)</span><span>{money(dt.tax)}</span></div>}
+                  <div className="set-row"><span><b>Total</b></span><span><b>{money(dt.total)}</b></span></div>
+                </div>
+              )}
+              {rich && det.m && <p className="note" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{det.m}</p>}
+              {det && !rich && <p className="note warn" style={{ margin: 0 }}>The item details in this link do not match the amount, so they are hidden. Pay only if the amount above is what you agreed.</p>}
             </div>
+            <button className="btn ghost no-print" type="button" onClick={() => window.print()}>Download or print</button>
             {paid && (
               <ReceiptCard
-                title="Invoice paid" amount={info.amount} hash={paid.hash} took={paid.took}
-                rows={[['Paid to', verified || shortAddr(info.recipient)], info.note ? ['For', info.note] : null, ['From', shortAddr(acct.address)]]}
+                title={rich ? `Invoice ${det.n} paid` : 'Invoice paid'} amount={info.amount} hash={paid.hash} took={paid.took}
+                rows={[['Paid to', verified || shortAddr(info.recipient)], (rich ? det.n : info.note) ? ['For', rich ? `Invoice ${det.n}` : info.note] : null, ['From', shortAddr(acct.address)]]}
               />
             )}
             {open && !paid && (
               <>
-                <p className="callout">Only pay someone you know, and check that the amount and note match what they told you.</p>
+                <p className="callout no-print">Only pay someone you know, and check that the amount and note match what they told you.</p>
                 {!acct.authenticated
                   ? <button className="btn" type="button" onClick={acct.login} disabled={!acct.ready}>Sign in to pay</button>
                   : mine

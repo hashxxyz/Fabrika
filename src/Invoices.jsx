@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PAY, payAbi, publicClient, PAY_STATUS } from './chain.js';
-import { loadInvoices, payUrl, cleanError, fmtMon, fmtDate, shortAddr } from './lib.js';
+import { loadInvoices, cleanError, fmtDate, shortAddr } from './lib.js';
 import { Badge, copyText } from './ui.jsx';
 import { Link } from './router.jsx';
+import { payLink, money } from './invoiceLib.js';
+
+const FILTERS = [['all', 'All'], ['open', 'Open'], ['paid', 'Paid'], ['closed', 'Closed']];
+const inFilter = (f, s) => f === 'all' || (f === 'open' && s === 1) || (f === 'paid' && s === 2) || (f === 'closed' && (s === 3 || s === 4));
 
 export default function Invoices({ acct, toast }) {
   const [list] = useState(() => loadInvoices(acct.address));
   const [status, setStatus] = useState({});
   const [busyId, setBusyId] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [q, setQ] = useState('');
 
   const load = useCallback(async () => {
     if (!PAY) return;
@@ -38,30 +44,77 @@ export default function Invoices({ acct, toast }) {
     }
   }
 
+  const stats = useMemo(() => {
+    let out = 0n, paid = 0n, nOpen = 0, nPaid = 0;
+    list.forEach((i) => {
+      const s = status[i.id]?.s;
+      if (s === 1) { out += BigInt(i.amount); nOpen += 1; }
+      if (s === 2) { paid += BigInt(i.amount); nPaid += 1; }
+    });
+    return { out, paid, nOpen, nPaid };
+  }, [list, status]);
+
+  const shown = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return list.filter((i) => {
+      const s = status[i.id]?.s;
+      if (filter !== 'all' && !(s && inFilter(filter, s))) return false;
+      if (!t) return true;
+      return [i.d?.n, i.d?.c, i.d?.e, i.note].some((x) => String(x || '').toLowerCase().includes(t));
+    });
+  }, [list, status, filter, q]);
+
+  function exportCsv() {
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['Number', 'Customer', 'Email', 'Description', 'Amount (MON)', 'Status', 'Created', 'Due', 'Paid on', 'Paid by']];
+    list.forEach((i) => {
+      const st = status[i.id];
+      rows.push([
+        i.d?.n || '', i.d?.c || '', i.d?.e || '', i.note, money(i.amount).replace(' MON', '').replace(/,/g, ''), st ? PAY_STATUS[st.s] : '',
+        new Date(i.createdAt).toISOString().slice(0, 10), i.expiresAt ? new Date(i.expiresAt * 1000).toISOString().slice(0, 10) : '',
+        st?.s === 2 ? new Date(st.paidAt * 1000).toISOString().slice(0, 10) : '', st?.s === 2 ? st.payer : '',
+      ]);
+    });
+    const blob = new Blob([rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'fabrika-invoices.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
   if (!list.length) {
     return <div className="card"><h3>Invoices</h3><p className="note" style={{ margin: 0 }}>Nothing yet. <Link to="/invoice">Create an invoice</Link> and share the link.</p></div>;
   }
 
   return (
     <div className="card">
-      <div className="card-head"><h3>Invoices</h3><button className="copy" type="button" onClick={load}>Refresh</button></div>
+      <div className="card-head"><h3>Invoices</h3><span><button className="copy" type="button" onClick={load}>Refresh</button> <button className="copy" type="button" onClick={exportCsv}>Export CSV</button></span></div>
+      <div className="inv-stats">
+        <div><span>Outstanding</span><b>{money(stats.out)}</b><small>{stats.nOpen} open</small></div>
+        <div><span>Paid</span><b>{money(stats.paid)}</b><small>{stats.nPaid} paid</small></div>
+      </div>
+      <div className="seg" role="tablist" aria-label="Filter invoices">
+        {FILTERS.map(([v, l]) => <button key={v} type="button" role="tab" aria-selected={filter === v} onClick={() => setFilter(v)}>{l}</button>)}
+      </div>
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search number, customer or item" aria-label="Search invoices" autoComplete="off" />
       <div>
-        {list.map((inv) => {
+        {!shown.length && <p className="note" style={{ margin: 0 }}>No invoices match.</p>}
+        {shown.map((inv) => {
           const st = status[inv.id];
+          const link = payLink(inv.id, inv.d);
           return (
             <div className="act" key={inv.id}>
-              <span className="t">{inv.note}</span>
-              <span className="a">{fmtMon(BigInt(inv.amount))} MON</span>
+              <span className="t">{inv.d?.n ? `${inv.d.n}${inv.d.c ? ` · ${inv.d.c}` : ''}` : inv.note}</span>
+              <span className="a">{money(inv.amount)}</span>
               <span className="s">
                 {st ? <Badge>{PAY_STATUS[st.s]}</Badge> : '…'}
                 {st && st.s === 2 && ` by ${shortAddr(st.payer)}, ${fmtDate(st.paidAt)}`}
+                {st && st.s !== 2 && inv.expiresAt ? ` · due ${new Date(inv.expiresAt * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' })}` : ''}
               </span>
-              {st && st.s === 1 && (
-                <span className="links">
-                  <button type="button" onClick={() => copyText(payUrl(inv.id), toast)}>Copy link</button>
-                  <button type="button" disabled={busyId === inv.id} onClick={() => cancel(inv.id)}>Cancel</button>
-                </span>
-              )}
+              <span className="links">
+                <Link to={link.replace(location.origin, '')}>View</Link>
+                {st && st.s === 1 && <button type="button" onClick={() => copyText(link, toast)}>Copy link</button>}
+                {st && st.s === 1 && <button type="button" disabled={busyId === inv.id} onClick={() => cancel(inv.id)}>Cancel</button>}
+              </span>
             </div>
           );
         })}
