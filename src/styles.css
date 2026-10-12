@@ -308,3 +308,10 @@ body { background:radial-gradient(120% 520px at 50% 0%, var(--monad-wash), trans
 .check { display:flex; align-items:center; gap:10px; font-size:15.5px; }
 .check input { width:20px; height:20px; flex:none; padding:0; }
 .field textarea { font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:var(--bg); color:var(--ink); resize:vertical; min-height:84px; }
+
+/* Balance privacy (eye button) */
+.balrow { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
+.eye { background:none; border:0; color:inherit; opacity:.85; cursor:pointer; padding:8px; margin:-8px -8px -8px 0; border-radius:999px; display:inline-flex; flex:none; }
+.eye:hover { opacity:1; }
+.eye svg { width:22px; height:22px; display:block; }
+.eye:focus-visible { outline:2px solid currentColor; outline-offset:2px; }

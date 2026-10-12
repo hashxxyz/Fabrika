@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Stitch, Badge } from './ui.jsx';
+import { Stitch, Badge, BalanceEye, useHideBalance } from './ui.jsx';
 import { Link } from './router.jsx';
 import { fmtMon, shortAddr, recentActivity } from './lib.js';
 import { FAUCET } from './chain.js';
@@ -48,11 +48,12 @@ function Landing({ acct }) {
 
 function Overview({ acct, toast }) {
   const recent = acct.address ? recentActivity(acct.address, 5) : [];
+  const { hidden, toggle } = useHideBalance();
   return (
     <section className="col dash">
       <div className="balcard">
-        <div className="k">Your balance</div>
-        <div className="big"><span>{acct.balance == null ? '…' : fmtMon(acct.balance)}</span><small>MON</small></div>
+        <div className="balrow"><div className="k">Your balance</div><BalanceEye hidden={hidden} onToggle={toggle} /></div>
+        <div className="big"><span aria-label={hidden ? 'Balance hidden' : undefined}>{acct.balance == null ? '…' : hidden ? '••••' : fmtMon(acct.balance)}</span><small>MON</small></div>
         <div className="addr">{acct.address ? shortAddr(acct.address) : 'Setting up your account…'}</div>
       </div>
       <div className="actions">

@@ -1,4 +1,4 @@
-import { copyText } from './ui.jsx';
+import { copyText, BalanceEye, useHideBalance } from './ui.jsx';
 import { FAUCET, explorer } from './chain.js';
 import { fmtMon, shortAddr, loadTransfers } from './lib.js';
 import { Link } from './router.jsx';
@@ -10,13 +10,14 @@ import Pending from './Pending.jsx';
 import Activity from './Activity.jsx';
 
 export default function Account({ acct, toast }) {
+  const { hidden, toggle } = useHideBalance();
   return (
     <Gate acct={acct} title="Account">
       <section className="col dash">
         <h1 className="title">Account</h1>
         <div className="balcard">
-          <div className="k">{acct.label || 'Your account'}</div>
-          <div className="big"><span>{acct.balance == null ? '…' : fmtMon(acct.balance)}</span><small>MON</small></div>
+          <div className="balrow"><div className="k">{acct.label || 'Your account'}</div><BalanceEye hidden={hidden} onToggle={toggle} /></div>
+          <div className="big"><span aria-label={hidden ? 'Balance hidden' : undefined}>{acct.balance == null ? '…' : hidden ? '••••' : fmtMon(acct.balance)}</span><small>MON</small></div>
           <div className="addr">
             <code>{shortAddr(acct.address)}</code>
             <button className="copy" type="button" onClick={() => copyText(acct.address, toast)}>Copy address</button>
@@ -26,7 +27,7 @@ export default function Account({ acct, toast }) {
           <Link className="btn" to="/transfer">Send money</Link>
           <a className="btn ghost" href={explorer.address(acct.address)} target="_blank" rel="noopener">View on explorer</a>
         </div>
-        {acct.balance === 0n && (
+        {acct.balance === 0n && !hidden && (
           <p className="callout warn">Your balance is empty. Get free test MON from the <a href={FAUCET} target="_blank" rel="noopener">faucet</a> and paste the address above.</p>
         )}
         <Pending acct={acct} toast={toast} prompt />
