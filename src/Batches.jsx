@@ -7,7 +7,7 @@ import { loadBatches, cleanError, fmtMon, fmtDate, KINDS } from './lib.js';
 import { Badge } from './ui.jsx';
 import Share from './Share.jsx';
 
-export default function Batches({ acct, toast }) {
+export default function Batches({ acct, toast, embedded = false }) {
   const [batches] = useState(() => loadBatches(acct.address));
   const [status, setStatus] = useState({});
   const [busyId, setBusyId] = useState('');
@@ -46,12 +46,12 @@ export default function Batches({ acct, toast }) {
   }
 
   if (!batches.length) {
-    return <div className="card"><h3>Payments to usernames</h3><p className="note" style={{ margin: 0 }}>Nothing yet. Pay someone by Telegram or X username and it shows up here with its live status.</p></div>;
+    return <div className={embedded ? 'embed' : 'card'}>{!embedded && <h3>Payments to usernames</h3>}<div className="hempty"><b>No payouts yet</b><span className="note" style={{ margin: 0 }}>Pay someone by Telegram or X username and it shows up here with its live status.</span><Link className="btn ghost sm" to="/transfer" style={{ width: 'auto' }}>Send to a name</Link></div></div>;
   }
 
   return (
-    <div className="card">
-      <div className="card-head"><h3>Payments to usernames</h3><button className="copy" type="button" onClick={load} disabled={loading}>{loading ? 'Checking…' : 'Refresh'}</button></div>
+    <div className={embedded ? 'embed' : 'card'}>
+      <div className={'card-head' + (embedded ? ' end' : '')}>{!embedded && <h3>Payments to usernames</h3>}<button className="copy" type="button" onClick={load} disabled={loading}>{loading ? 'Checking…' : 'Refresh'}</button></div>
       <p className="note" style={{ margin: 0 }}>Live status from Monad. Names are saved on this device only.</p>
       {batches.map((b) => {
         const total = b.items.reduce((s, it) => s + BigInt(it.amount), 0n);

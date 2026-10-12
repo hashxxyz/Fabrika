@@ -8,7 +8,7 @@ import { payLink, money } from './invoiceLib.js';
 const FILTERS = [['all', 'All'], ['open', 'Open'], ['paid', 'Paid'], ['closed', 'Closed']];
 const inFilter = (f, s) => f === 'all' || (f === 'open' && s === 1) || (f === 'paid' && s === 2) || (f === 'closed' && (s === 3 || s === 4));
 
-export default function Invoices({ acct, toast }) {
+export default function Invoices({ acct, toast, embedded = false }) {
   const [list] = useState(() => loadInvoices(acct.address));
   const [status, setStatus] = useState({});
   const [busyId, setBusyId] = useState('');
@@ -82,12 +82,12 @@ export default function Invoices({ acct, toast }) {
   }
 
   if (!list.length) {
-    return <div className="card"><h3>Invoices</h3><p className="note" style={{ margin: 0 }}>Nothing yet. <Link to="/invoice">Create an invoice</Link> and share the link.</p></div>;
+    return <div className={embedded ? 'embed' : 'card'}>{!embedded && <h3>Invoices</h3>}<div className="hempty"><b>No invoices yet</b><span className="note" style={{ margin: 0 }}>Ask for an exact amount and share the link.</span><Link className="btn ghost sm" to="/invoice" style={{ width: 'auto' }}>Create an invoice</Link></div></div>;
   }
 
   return (
-    <div className="card">
-      <div className="card-head"><h3>Invoices</h3><span><button className="copy" type="button" onClick={load}>Refresh</button> <button className="copy" type="button" onClick={exportCsv}>Export CSV</button></span></div>
+    <div className={embedded ? 'embed' : 'card'}>
+      <div className={'card-head' + (embedded ? ' end' : '')}>{!embedded && <h3>Invoices</h3>}<span><button className="copy" type="button" onClick={load}>Refresh</button> <button className="copy" type="button" onClick={exportCsv}>Export CSV</button></span></div>
       <div className="inv-stats">
         <div><span>Outstanding</span><b>{money(stats.out)}</b><small>{stats.nOpen} open</small></div>
         <div><span>Paid</span><b>{money(stats.paid)}</b><small>{stats.nPaid} paid</small></div>

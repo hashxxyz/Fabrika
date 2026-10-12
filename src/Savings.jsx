@@ -1,20 +1,149 @@
 import { useState } from 'react';
-import { formatEther } from 'viem';
 import { ADDR, savingsAbi } from './abis.js';
 import { chainNow } from './chain.js';
-import { parseAmount, randomId, cleanNote, fmtMon, shortAddr, fmtDate } from './lib.js';
+import { parseAmount, randomId, cleanNote, fmtMon, shortAddr } from './lib.js';
 import { param, ID_RE, read, useTx, useLive, saveMine, loadMine, NotOn, Share, Done, Row, Err, Bar, same, dayEnd, todayStr, parseAddresses } from './kit.jsx';
-import { Badge } from './ui.jsx';
 import { Link } from './router.jsx';
 import Gate from './Gate.jsx';
 
 const pct = (bps) => `${Number(bps) / 100}%`;
+const svg = (d) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+const LOCK = svg(<><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11V8a4 4 0 018 0v3" /></>);
+const ARROW = svg(<path d="M5 12h14M13 6l6 6-6 6" />);
+const TREND = svg(<path d="M3 17l6-6 4 4 8-8M15 7h6v6" />);
+const PLUS = svg(<><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>);
+const dateOf = (sec) => new Date(sec * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' });
+const daysLeft = (sec) => Math.max(0, Math.ceil((sec * 1000 - Date.now()) / 86400000));
+
+// Where a goal stands, in plain words. tone drives the pill colour.
+function statusOf(g) {
+  if (g.closed) return { text: 'Withdrawn', tone: 'done' };
+  if (g.metAt) return { text: 'Goal confirmed', tone: 'good' };
+  if (Date.now() / 1000 > g.goalBy) return { text: 'Date passed', tone: 'late' };
+  return { text: 'Saving', tone: 'saving' };
+}
 
 export default function Savings({ acct, toast }) {
   if (!ADDR.savings) return <NotOn name="Goal savings" />;
   const id = param('s');
-  return id ? <View acct={acct} id={id} toast={toast} /> : <Create acct={acct} toast={toast} />;
+  if (id) return <View acct={acct} id={id} toast={toast} />;
+  return (
+    <Gate acct={acct} title="Goal savings">
+      {param('new') ? <Create acct={acct} toast={toast} /> : <Hub acct={acct} toast={toast} />}
+    </Gate>
+  );
 }
+
+/* ---------------------------------------------------------------- Hub */
+
+function Hub({ acct, toast }) {
+  const [past, setPast] = useState(false);
+  const mine = loadMine('savings', acct.address);
+  const key = mine.map((m) => m.id).join(',');
+  const { data, error, reload } = useLive(async () => {
+    const [base, boost, pool] = await Promise.all([
+      read(ADDR.savings, savingsAbi, 'baseBps'), read(ADDR.savings, savingsAbi, 'boostBps'), read(ADDR.savings, savingsAbi, 'rewards'),
+    ]);
+    const goals = await Promise.all(mine.map(async (m) => {
+      try {
+        const [a, p, y] = await Promise.all([
+          read(ADDR.savings, savingsAbi, 'getAccount', [m.id]), read(ADDR.savings, savingsAbi, 'progressOf', [m.id]), read(ADDR.savings, savingsAbi, 'pendingYield', [m.id]),
+        ]);
+        return { id: m.id, title: m.title, principal: a[1], goalBy: Number(a[3]), metAt: Number(p[0]), closed: p[3], yield: y };
+      } catch { return null; }
+    }));
+    return { base, boost, pool, goals: goals.filter(Boolean) };
+  }, [key, acct.address], 10000);
+
+  const active = (data?.goals || []).filter((g) => !g.closed);
+  const old = (data?.goals || []).filter((g) => g.closed);
+  const total = active.reduce((s, g) => s + g.principal, 0n);
+  const earned = active.reduce((s, g) => s + g.yield, 0n);
+  const shown = past ? old : active;
+
+  return (
+    <section className="col">
+      <div>
+        <h1 className="title">Goal savings</h1>
+        <p className="sub">Save toward a goal. Friends confirm it and your rate goes up.</p>
+      </div>
+
+      <div className="balcard">
+        <div className="k">Total saved</div>
+        <div className="big"><span>{data ? fmtMon(total) : '…'}</span><small>MON</small></div>
+        <div className="sv-note">Take it out any time. Your own money is never used to pay yield.</div>
+      </div>
+
+      <div className="sv-row">
+        <span className="sv-ico">{TREND}</span>
+        <span className="sv-label">Yield so far</span>
+        <b className="pos">+{data ? fmtMon(earned, 6) : '0'} MON</b>
+      </div>
+
+      {data && <div className="sv-rates"><span className="sv-pill" data-tone="good">Base {pct(data.base)} a year</span><span className="sv-pill" data-tone="good">Up to {pct(data.boost)} when confirmed</span></div>}
+      {error && !data && <p className="err" role="alert">{error}</p>}
+
+      <div className="sv-head">
+        <h2>{past ? 'Past goals' : 'Active goals'}</h2>
+        {(old.length > 0 || past) && <button className="sv-link" type="button" onClick={() => setPast(!past)}>{past ? 'Back to active' : 'View past goals'}</button>}
+      </div>
+
+      {!data && !error && <div className="sv-goal sv-skel" aria-busy="true"><i /><i /><i /></div>}
+      {data && !shown.length && (
+        <div className="card">
+          <b>{past ? 'No past goals' : 'No goals yet'}</b>
+          <p className="note" style={{ margin: 0 }}>{past ? 'Goals you withdraw show up here.' : 'Lock some MON, name a goal and choose friends who can confirm it.'}</p>
+        </div>
+      )}
+      {shown.map((g) => {
+        const st = statusOf(g);
+        return (
+          <Link className="sv-goal" to={`/save?s=${g.id}`} key={g.id}>
+            <span className="ic">{LOCK}</span>
+            <span className="mid"><span className="nm">{g.title}</span><span className="am">{fmtMon(g.principal)} MON</span></span>
+            <span className="go">{ARROW}</span>
+            <span className="ft">
+              <span>{g.closed ? 'Closed' : `Ends ${dateOf(g.goalBy)} (${daysLeft(g.goalBy)} ${daysLeft(g.goalBy) === 1 ? 'day' : 'days'})`}</span>
+              <span className="sv-pill" data-tone={st.tone}>{st.text}</span>
+            </span>
+          </Link>
+        );
+      })}
+
+      <Link className="btn sv-create" to="/save?new=1">{PLUS}Create a new goal</Link>
+
+      <h2 className="sv-h2">More</h2>
+      <RewardsCard acct={acct} toast={toast} pool={data?.pool} onDone={reload} />
+      <div className="faq">
+        <details><summary>How does my rate go up?</summary><p>You name friends and how many must confirm your goal. Once enough of them confirm before your goal date, your rate moves from the base rate to the confirmed rate.</p></details>
+        <details><summary>Can I take my money out?</summary><p>Yes, any time. Withdrawing sends back your savings plus the yield earned so far and closes that goal.</p></details>
+        <details><summary>Where does the yield come from?</summary><p>From a rewards pool that people fund. If it runs low, yield is paid up to what is left.</p></details>
+      </div>
+    </section>
+  );
+}
+
+function RewardsCard({ acct, toast, pool, onDone }) {
+  const [fund, setFund] = useState('');
+  const tx = useTx(acct);
+  async function add() {
+    const a = parseAmount(fund);
+    if (!a) return tx.setErr('Enter an amount.');
+    const r = await tx.run('Adding…', (wc) => wc.writeContract({ address: ADDR.savings, abi: savingsAbi, functionName: 'fundRewards', value: a }));
+    if (r) { toast('Added to rewards'); setFund(''); onDone(); }
+  }
+  return (
+    <div className="card">
+      <div className="card-head"><h3>Rewards pool</h3><b className="sv-amt">{pool == null ? '…' : fmtMon(pool)} MON</b></div>
+      <p className="note" style={{ margin: 0 }}>Pays yield to savers. Anyone can add MON.</p>
+      <div className="field"><label htmlFor="v-r">Amount to add (MON)</label><input id="v-r" value={fund} onChange={(e) => setFund(e.target.value)} inputMode="decimal" autoComplete="off" /></div>
+      <button className="btn ghost" type="button" onClick={add} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Add to rewards'}</button>
+      <Err>{tx.err}</Err>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- Create */
 
 function Create({ acct, toast }) {
   const [amt, setAmt] = useState('');
@@ -23,12 +152,10 @@ function Create({ acct, toast }) {
   const [need, setNeed] = useState('1');
   const [by, setBy] = useState('');
   const [made, setMade] = useState(null);
-  const [fund, setFund] = useState('');
   const tx = useTx(acct);
-  const { data, reload } = useLive(async () => ({
-    base: await read(ADDR.savings, savingsAbi, 'baseBps'), boost: await read(ADDR.savings, savingsAbi, 'boostBps'), pool: await read(ADDR.savings, savingsAbi, 'rewards'),
-  }), [], 10000);
-  const mine = acct.address ? loadMine('savings', acct.address) : [];
+  const { data } = useLive(async () => ({
+    base: await read(ADDR.savings, savingsAbi, 'baseBps'), boost: await read(ADDR.savings, savingsAbi, 'boostBps'),
+  }), [], 20000);
 
   async function submit() {
     const amount = parseAmount(amt);
@@ -50,55 +177,47 @@ function Create({ acct, toast }) {
     setMade({ id, text });
   }
 
-  async function addRewards() {
-    const a = parseAmount(fund);
-    if (!a) return tx.setErr('Enter an amount.');
-    const r = await tx.run('Funding…', (wc) => wc.writeContract({ address: ADDR.savings, abi: savingsAbi, functionName: 'fundRewards', value: a }));
-    if (r) { toast('Added to rewards'); setFund(''); reload(); }
-  }
-
   if (made) {
     const url = `${location.origin}/save?s=${made.id}`;
     return (
-      <Gate acct={acct} title="Goal savings">
-        <section className="col">
-          <div className="card">
-            <Done title="Savings locked" line={made.text} />
-            <p className="sub" style={{ margin: 0 }}>Send this link to your friends. When enough of them confirm your goal, your rate goes up.</p>
-            <Share url={url} text={`Please confirm my goal when I reach it: ${made.text}.`} toast={toast} />
-          </div>
-          <button className="btn ghost" type="button" onClick={() => { setMade(null); setAmt(''); setGoal(''); }}>New savings</button>
-        </section>
-      </Gate>
+      <section className="col">
+        <div className="card">
+          <Done title="Savings locked" line={made.text} />
+          <p className="sub" style={{ margin: 0 }}>Send this link to your friends. When enough of them confirm your goal, your rate goes up.</p>
+          <Share url={url} text={`Please confirm my goal when I reach it: ${made.text}.`} toast={toast} />
+        </div>
+        <Link className="btn ghost" to={`/save?s=${made.id}`}>View this goal</Link>
+      </section>
     );
   }
 
   return (
-    <Gate acct={acct} title="Goal savings">
-      <section className="col">
-        <div><h1 className="title">Goal savings</h1><p className="sub">Save toward a goal. Your friends confirm it. Your rate goes up.</p></div>
-        {data && <p className="callout">Base rate {pct(data.base)} a year. Confirmed goal {pct(data.boost)} a year. Rewards pool: {fmtMon(data.pool)} MON.</p>}
-        <div className="card">
-          <div className="field"><label htmlFor="v-a">Amount to save (MON)</label><input id="v-a" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" autoComplete="off" /></div>
-          <div className="field"><label htmlFor="v-g">Your goal</label><input id="v-g" value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={120} autoComplete="off" /></div>
-          <div className="field"><label htmlFor="v-b">Goal date</label><input id="v-b" type="date" min={todayStr(1)} value={by} onChange={(e) => setBy(e.target.value)} /></div>
-          <div className="field"><label htmlFor="v-f">Friends who can confirm (wallet addresses)</label><textarea id="v-f" value={friends} onChange={(e) => setFriends(e.target.value)} /></div>
-          <div className="field"><label htmlFor="v-n">How many must confirm</label><input id="v-n" value={need} onChange={(e) => setNeed(e.target.value)} inputMode="numeric" /></div>
-          <button className="btn" type="button" onClick={submit} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Lock savings'}</button>
-          <Err>{tx.err}</Err>
-          <p className="note" style={{ margin: 0 }}>You can take your savings out any time. Yield comes from a rewards pool that people fund. If it runs low, yield is paid up to what is left. Your own money is never part of it.</p>
-        </div>
-        <div className="card">
-          <h3>Fund the rewards pool</h3>
-          <p className="sub" style={{ margin: 0 }}>Add MON that pays yield to savers. Anyone can add.</p>
-          <div className="field"><label htmlFor="v-r">Amount (MON)</label><input id="v-r" value={fund} onChange={(e) => setFund(e.target.value)} inputMode="decimal" autoComplete="off" /></div>
-          <button className="btn ghost" type="button" onClick={addRewards} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Add to rewards'}</button>
-        </div>
-        {mine.length > 0 && <div className="card"><h3>Your savings</h3>{mine.slice(0, 8).map((m) => <div className="act" key={m.id}><Link className="t" to={`/save?s=${m.id}`}>{m.title}</Link></div>)}</div>}
-      </section>
-    </Gate>
+    <section className="col">
+      <div>
+        <h1 className="title">New goal</h1>
+        <p className="sub">Lock some MON toward something you want. You can withdraw any time.</p>
+      </div>
+
+      <div className="sv-intro">
+        <div><b>Get friends to confirm it</b><span>Name the people who can vouch that you reached your goal.</span></div>
+        <div><b>Earn more when it is confirmed</b><span>{data ? `Your rate goes from ${pct(data.base)} to ${pct(data.boost)} a year.` : 'Your rate goes up once enough friends confirm.'}</span></div>
+      </div>
+
+      <div className="card">
+        <div className="field"><label htmlFor="v-g">What are you saving for?</label><input id="v-g" value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={120} autoComplete="off" /></div>
+        <div className="field"><label htmlFor="v-a">Amount to save (MON)</label><input id="v-a" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" autoComplete="off" /></div>
+        <div className="field"><label htmlFor="v-b">Goal date</label><input id="v-b" type="date" min={todayStr(1)} value={by} onChange={(e) => setBy(e.target.value)} /></div>
+        <div className="field"><label htmlFor="v-f">Friends who can confirm (wallet addresses, one per line)</label><textarea id="v-f" value={friends} onChange={(e) => setFriends(e.target.value)} /></div>
+        <div className="field"><label htmlFor="v-n">How many must confirm</label><input id="v-n" value={need} onChange={(e) => setNeed(e.target.value)} inputMode="numeric" /></div>
+        <button className="btn" type="button" onClick={submit} disabled={!!tx.busy || !acct.address}>{tx.busy || 'Lock savings'}</button>
+        <Err>{tx.err}</Err>
+        <p className="note" style={{ margin: 0 }}>Yield comes from a rewards pool that people fund. If it runs low, yield is paid up to what is left. Your own money is never part of it.</p>
+      </div>
+    </section>
   );
 }
+
+/* ---------------------------------------------------------------- Goal detail */
 
 function View({ acct, id, toast }) {
   const tx = useTx(acct);
@@ -123,30 +242,45 @@ function View({ acct, id, toast }) {
   const myV = data.verifiers.find((v) => same(v.addr, acct.address));
   const open = !data.closed;
   const late = Date.now() / 1000 > data.goalBy;
+  const st = statusOf({ closed: data.closed, metAt: data.metAt, goalBy: data.goalBy });
   const act = async (label, fn, msg) => { const r = await tx.run(label, fn); if (r) { toast(msg); reload(); } };
   const call = (fn) => (wc) => wc.writeContract({ address: ADDR.savings, abi: savingsAbi, functionName: fn, args: [id] });
+  const link = `${location.origin}/save?s=${id}`;
 
   return (
-    <section className="col" style={{ paddingBlock: '24px 40px' }}>
-      <div className="card">
-        <div className="card-head"><h3>Goal savings</h3><Badge>{data.closed ? 'Closed' : data.metAt ? 'Goal confirmed' : late ? 'Goal not confirmed' : 'Saving'}</Badge></div>
-        <p className="sub" style={{ margin: 0 }}>{data.goal}</p>
-        <div className="slip-amt" style={{ margin: 0 }}>{fmtMon(data.principal)}<small>MON saved</small></div>
-        <Row k="Saver" v={isOwner ? 'You' : shortAddr(data.owner)} />
-        <Row k="Current rate" v={`${pct(data.metAt ? data.boost : data.base)} a year`} />
-        <Row k="Goal date" v={fmtDate(data.goalBy)} />
-        <Row k="Yield so far" v={`${Number(formatEther(data.yield)).toFixed(6)} MON`} />
-        <Bar value={BigInt(data.count)} max={BigInt(data.threshold)} />
-        <p className="note" style={{ margin: 0 }}>{data.count} of {data.threshold} friends have confirmed</p>
-        {data.verifiers.map((v) => <Row key={v.addr} k={same(v.addr, acct.address) ? 'You' : shortAddr(v.addr)} v={v.done ? 'Confirmed' : 'Waiting'} />)}
-
-        {open && myV && !myV.done && !late && <button className="btn" type="button" onClick={() => act('Confirming…', call('attest'), 'Confirmed')} disabled={!!tx.busy}>{tx.busy || 'I confirm they reached this goal'}</button>}
-        {open && myV && !myV.done && late && <p className="callout">The goal date has passed, so confirmations no longer count.</p>}
-        {open && isOwner && <button className="btn" type="button" onClick={() => act('Withdrawing…', call('withdraw'), 'Withdrawn')} disabled={!!tx.busy}>{tx.busy || 'Withdraw savings and yield'}</button>}
-        {open && !acct.authenticated && <button className="btn ghost" type="button" onClick={acct.login} disabled={!acct.ready}>Sign in</button>}
-        {open && isOwner && <Share url={`${location.origin}/save?s=${id}`} text={`Please confirm my goal when I reach it: ${data.goal}.`} toast={toast} />}
-        <Err>{tx.err}</Err>
+    <section className="col">
+      <div className="balcard">
+        <div className="balrow"><div className="k">{data.goal}</div><span className="sv-pill sv-on-dark" data-tone={st.tone}>{st.text}</span></div>
+        <div className="big"><span>{fmtMon(data.principal)}</span><small>MON saved</small></div>
+        <div className="sv-note">{isOwner ? 'Your goal' : `Saved by ${shortAddr(data.owner)}`} · ends {dateOf(data.goalBy)}{open ? ` (${daysLeft(data.goalBy)} days)` : ''}</div>
       </div>
+
+      <div className="sv-row">
+        <span className="sv-ico">{TREND}</span>
+        <span className="sv-label">Yield so far</span>
+        <b className="pos">+{fmtMon(data.yield, 6)} MON</b>
+      </div>
+
+      <div className="card">
+        <div className="card-head"><h3>Friend confirmations</h3><b className="sv-amt">{data.count} of {data.threshold}</b></div>
+        <Bar value={BigInt(data.count)} max={BigInt(data.threshold)} />
+        <div>
+          {data.verifiers.map((v) => <Row key={v.addr} k={same(v.addr, acct.address) ? 'You' : shortAddr(v.addr)} v={v.done ? 'Confirmed' : 'Waiting'} />)}
+        </div>
+        <p className="note" style={{ margin: 0 }}>Current rate: {pct(data.metAt ? data.boost : data.base)} a year. Confirmed goals earn {pct(data.boost)}.</p>
+      </div>
+
+      {open && myV && !myV.done && !late && <button className="btn" type="button" onClick={() => act('Confirming…', call('attest'), 'Confirmed')} disabled={!!tx.busy}>{tx.busy || 'I confirm they reached this goal'}</button>}
+      {open && myV && !myV.done && late && <p className="callout">The goal date has passed, so confirmations no longer count.</p>}
+      {open && isOwner && <button className="btn" type="button" onClick={() => act('Withdrawing…', call('withdraw'), 'Withdrawn')} disabled={!!tx.busy}>{tx.busy || 'Withdraw savings and yield'}</button>}
+      {open && !acct.authenticated && <button className="btn ghost" type="button" onClick={acct.login} disabled={!acct.ready}>Sign in</button>}
+      {open && isOwner && (
+        <div className="card">
+          <h3>Ask friends to confirm</h3>
+          <Share url={link} text={`Please confirm my goal when I reach it: ${data.goal}.`} toast={toast} />
+        </div>
+      )}
+      <Err>{tx.err}</Err>
     </section>
   );
 }

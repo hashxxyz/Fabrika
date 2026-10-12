@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import useAccount from './useAccount.js';
-import { Link, useRoute } from './router.jsx';
+import { Link, useRoute, goBack, previousPath } from './router.jsx';
 import Home from './Home.jsx';
 import Transfer from './Transfer.jsx';
 import Account from './Account.jsx';
@@ -27,6 +27,13 @@ const NAV = [
   ['/settings', 'Settings', ico(<><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /></>)],
 ];
 
+// Where Back goes when there is no earlier page in this visit (for example a page opened from a bookmark).
+const PARENT = { '/invoice': '/explore', '/split': '/explore', '/save': '/explore', '/receipt': '/account' };
+const NAMES = { '/': 'Home', '/transfer': 'Send', '/explore': 'Explore', '/account': 'Account', '/settings': 'Settings', '/invoice': 'Invoice', '/split': 'Split a bill', '/save': 'Goal savings', '/docs': 'Docs', '/receipt': 'Receipt' };
+const ARROW_LEFT = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+);
+
 export default function App() {
   const acct = useAccount();
   const path = useRoute();
@@ -47,6 +54,9 @@ export default function App() {
 
   const isClaim = path.startsWith('/claim') || path.startsWith('/pay');
   const landing = path === '/' && !acct.authenticated;
+  const showBack = !isClaim && path !== '/';
+  const parent = path === '/save' && location.search ? '/save' : PARENT[path] || '/';
+  const backTo = NAMES[previousPath()] || NAMES[parent];
 
   let page;
   if (path.startsWith('/pay')) page = <Pay acct={acct} />;
@@ -66,10 +76,15 @@ export default function App() {
     <>
       <header className="top-bar">
         <div className="wrap bar-in">
-          <Link className="mark" to="/">
-            <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 9c6-5 10 5 16 0s7-3 10 0M3 16c6-5 10 5 16 0s7-3 10 0M3 23c6-5 10 5 16 0s7-3 10 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-            Fabrika
-          </Link>
+          <div className="bar-left">
+            {showBack && (
+              <button className="back" type="button" onClick={() => goBack(parent)} aria-label={`Back to ${backTo}`} title={`Back to ${backTo}`}>{ARROW_LEFT}</button>
+            )}
+            <Link className="mark" to="/">
+              <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 9c6-5 10 5 16 0s7-3 10 0M3 16c6-5 10 5 16 0s7-3 10 0M3 23c6-5 10 5 16 0s7-3 10 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+              Fabrika
+            </Link>
+          </div>
           {!isClaim && (
             <nav className="nav" aria-label="Main">
               {NAV.map(([to, l, i]) => <Link key={to} to={to}>{i}{l}</Link>)}
