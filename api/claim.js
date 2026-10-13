@@ -2,7 +2,7 @@
 // Verifies the Privy user and the Telegram confirmation, signs the EIP-712 claim, and relays it (relayer pays gas).
 import { formatEther } from 'viem';
 import {
-  HttpError, route, verifyPrivy, kvGet, kvSet, kvDel, kvLock, readAllocation, privyUser, tagOf, publicClient, relayerClient, relayerAccount,
+  HttpError, route, verifyPrivy, kvGet, kvSet, kvDel, kvLock, readAllocation, privyUser, tagOf, publicClient, relayerClient, relayerAccount, withRelayerLock,
   authorizerAccount, vaultAddress, vaultAbi, monadTestnet, ID_RE, ADDR_RE, STATUS_OPEN,
 } from './_shared.js';
 
@@ -64,7 +64,7 @@ export default route('POST', async (req) => {
       throw new HttpError(409, 'The vault rejected this claim. It may have just been claimed or expired.');
     }
 
-    const txHash = await relayerClient().writeContract(request);
+    const txHash = await withRelayerLock(() => relayerClient().writeContract(request));
     await kvSet(`sent:${allocationId}`, txHash, 120).catch(() => {});
     if (!isX) await kvDel(`conf:${allocationId}`);
     try {

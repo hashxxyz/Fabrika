@@ -5,7 +5,7 @@
 //  4. On confirm, we store { privy user, destination } for that allocation. /api/claim requires a match.
 import { formatEther } from 'viem';
 import {
-  route, HttpError, webhookSecret, tg, kvGet, kvSet, kvDel, readAllocation, tagOf, STATUS_OPEN,
+  route, HttpError, webhookSecret, safeEqual, tg, kvGet, kvSet, kvDel, readAllocation, tagOf, STATUS_OPEN,
 } from './_shared.js';
 
 const CODE_RE = /^[0-9a-f]{32}$/;
@@ -31,7 +31,7 @@ async function check(chatId, from, code) {
 }
 
 export default route('POST', async (req) => {
-  if (req.headers['x-telegram-bot-api-secret-token'] !== webhookSecret()) throw new HttpError(401, 'Unauthorized');
+  if (!safeEqual(req.headers['x-telegram-bot-api-secret-token'], webhookSecret())) throw new HttpError(401, 'Unauthorized');
   const u = req.body || {};
 
   try {
@@ -68,7 +68,7 @@ export default route('POST', async (req) => {
       } else if (act === 'ok') {
         const r = await check(chatId, cb.from, code);
         if (r) {
-          await kvSet(`conf:${r.rec.allocationId}`, { did: r.rec.did, destination: r.rec.destination, tgId: cb.from.id }, 60 * 60);
+          await kvSet(`conf:${r.rec.allocationId}`, { did: r.rec.did, destination: r.rec.destination, tgId: cb.from.id }, 24 * 60 * 60);
           await kvDel(`code:${code}`);
           await say(chatId, 'Confirmed. Go back to the claim page and tap Claim.');
         }

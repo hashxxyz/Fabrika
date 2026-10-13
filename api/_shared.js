@@ -1,5 +1,5 @@
 // Shared helpers for the Fabrika serverless functions. Files starting with "_" are not routes on Vercel.
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createPublicClient, createWalletClient, http, parseAbi, defineChain, keccak256, toBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
@@ -76,7 +76,7 @@ export async function verifyPrivy(req) {
   if (!token) throw new HttpError(401, 'Sign in first.');
   jwks ||= createRemoteJWKSet(new URL(`https://auth.privy.io/api/v1/apps/${appId}/jwks.json`));
   try {
-    const { payload } = await jwtVerify(token, jwks, { issuer: 'privy.io', audience: appId });
+    const { payload } = await jwtVerify(token, jwks, { issuer: 'privy.io', audience: appId, algorithms: ['ES256'] });
     if (!payload.sub) throw new Error('no sub');
     return payload.sub;
   } catch {
@@ -132,6 +132,22 @@ export const kvHall = async (k) => {
 export const kvDecr = (k) => redis('DECR', k);
 export const kvLock = async (k, ttl) => (await redis('SET', k, '1', 'NX', 'EX', String(ttl))) === 'OK';
 
+// One relayer key sends from many serverless instances. Serialize the send step so two requests never share a nonce.
+// The lock holds a random token and is only deleted by its owner, so a slow request that lost its lock
+// can never free the lock of the request that came after it.
+const UNLOCK = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+export async function withRelayerLock(fn) {
+  const k = 'lock:relayer';
+  const token = randomBytes(12).toString('hex');
+  let got = false;
+  for (let i = 0; i < 20 && !got; i++) {
+    got = (await redis('SET', k, token, 'NX', 'EX', '30')) === 'OK';
+    if (!got) await new Promise((r) => setTimeout(r, 400));
+  }
+  if (!got) throw new HttpError(503, 'The claim service is busy. Try again.');
+  try { return await fn(); } finally { await redis('EVAL', UNLOCK, '1', k, token).catch(() => {}); }
+}
+
 // ---- Telegram
 export async function tg(method, body) {
   const res = await fetch(`https://api.telegram.org/bot${need('TELEGRAM_BOT_TOKEN')}/${method}`, {
@@ -140,6 +156,10 @@ export async function tg(method, body) {
   if (!res.ok) console.error('Telegram error', method, res.status, await res.text().catch(() => ''));
 }
 export const webhookSecret = () => need('TELEGRAM_WEBHOOK_SECRET');
+export const safeEqual = (a, b) => {
+  const x = Buffer.from(String(a ?? '')), y = Buffer.from(String(b ?? ''));
+  return x.length === y.length && timingSafeEqual(x, y);
+};
 
 // ---- Route wrapper: method check, JSON in and out, errors never leak internals
 export function route(method, fn) {

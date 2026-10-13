@@ -4,12 +4,17 @@
 // Both need the Privy token, and the wallet must belong to the signed-in user. Nothing here is trusted blindly:
 // every item is checked against the chain before it is stored (the sender, the recipient tag, the invoice owner).
 import {
-  HttpError, route, verifyPrivy, privyUser, kvPush, kvList, kvLock, kvSet, readAllocation, readRequest, publicClient,
+  HttpError, route, verifyPrivy, privyUser, kvPush, kvList, kvLock, kvDel, kvSet, readAllocation, readRequest, publicClient,
   tagOf, maskEmail, ID_RE, ADDR_RE,
 } from './_shared.js';
 
 const YEAR = 365 * 24 * 3600;
 const HANDLE_RE = /^[a-z0-9_]{1,32}$/;
+// Run fn once per key. If it fails, free the key so a retry can store the item.
+async function once(key, fn) {
+  if (!(await kvLock(key.toLowerCase(), YEAR))) return;
+  try { await fn(); } catch (e) { await kvDel(key.toLowerCase()).catch(() => {}); throw e; }
+}
 const cleanNote = (s) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
 
 const get = route('GET', async (req) => {
@@ -40,14 +45,16 @@ const post = route('POST', async (req) => {
       if (a.status === 0 || a.batchId.toLowerCase() !== b.batchId.toLowerCase() || !mine(a.sender) || a.tag !== tagOf(it.handle, kind)) throw new HttpError(403, 'That payment is not yours.');
       return { id: it.id, handle: String(it.handle), amount: a.amount.toString(), sender: a.sender.toLowerCase(), note: cleanNote(it.note) };
     }));
-    if (!(await kvLock(`hist:seen:${b.batchId}`, YEAR))) return { ok: true };
     const sender = checked[0].sender;
-    // X payments are also indexed by the recipient's tag, so /api/pending can find them when that X account signs in.
-    // Only the allocation id is stored; amount, status and expiry are always read from the chain.
-    if (kind === 'x') await Promise.all(checked.map((c, i) => kvPush(`pend:${tagOf(items[i].handle, 'x')}`, { id: c.id, at: Date.now() }, 100)));
-    await kvPush(`hist:pay:${sender}`, {
-      batchId: b.batchId, hash: String(b.hash || ''), kind, createdAt: Number(b.createdAt) || Date.now(), expiresAt: Number(b.expiresAt) || 0,
-      items: checked.map(({ id, handle, amount, note }) => ({ id, kind, handle, amount, ...(note ? { note } : {}) })),
+    const hash = ID_RE.test(String(b.hash || '')) ? String(b.hash).toLowerCase() : '';
+    await once(`hist:seen:${b.batchId}`, async () => {
+      // X payments are also indexed by the recipient's tag, so /api/pending can find them when that X account signs in.
+      // Only the allocation id is stored; amount, status and expiry are always read from the chain.
+      if (kind === 'x') await Promise.all(checked.map((c, i) => kvPush(`pend:${tagOf(items[i].handle, 'x')}`, { id: c.id, at: Date.now() }, 100)));
+      await kvPush(`hist:pay:${sender}`, {
+        batchId: b.batchId.toLowerCase(), hash, kind, createdAt: Number(b.createdAt) || Date.now(), expiresAt: Number(b.expiresAt) || 0,
+        items: checked.map(({ id, handle, amount, note }) => ({ id, kind, handle, amount, ...(note ? { note } : {}) })),
+      });
     });
     return { ok: true };
   }
@@ -58,8 +65,7 @@ const post = route('POST', async (req) => {
     if (r.status === 0 || !mine(r.recipient)) throw new HttpError(403, 'That invoice is not yours.');
     // Verified identity shown to the payer: an X account Privy checked, or a masked email.
     await kvSet(`who:${r.recipient}`, { x: user.xUsername || '', email: maskEmail(user.email) }, YEAR);
-    if (!(await kvLock(`hist:seen:${b.id}`, YEAR))) return { ok: true };
-    await kvPush(`hist:inv:${r.recipient}`, { id: b.id, at: Date.now() });
+    await once(`hist:seen:${b.id}`, () => kvPush(`hist:inv:${r.recipient}`, { id: b.id.toLowerCase(), at: Date.now() }));
     return { ok: true };
   }
 
@@ -67,8 +73,9 @@ const post = route('POST', async (req) => {
     if (!ID_RE.test(b.hash || '')) throw new HttpError(400, 'Bad request.');
     const tx = await publicClient.getTransaction({ hash: b.hash }).catch(() => null);
     if (!tx || !tx.to || !mine(tx.from)) throw new HttpError(403, 'That transfer is not yours.');
-    if (!(await kvLock(`hist:seen:${b.hash}`, YEAR))) return { ok: true };
-    await kvPush(`hist:tr:${tx.from.toLowerCase()}`, { hash: b.hash, to: tx.to, amount: tx.value.toString(), at: Date.now(), ...(cleanNote(b.note) ? { note: cleanNote(b.note) } : {}) });
+    const rc = await publicClient.getTransactionReceipt({ hash: b.hash }).catch(() => null);
+    if (!rc || rc.status !== 'success') throw new HttpError(409, 'That transfer is not confirmed.');
+    await once(`hist:seen:${b.hash}`, () => kvPush(`hist:tr:${tx.from.toLowerCase()}`, { hash: b.hash.toLowerCase(), to: tx.to, amount: tx.value.toString(), at: Date.now(), ...(cleanNote(b.note) ? { note: cleanNote(b.note) } : {}) }));
     return { ok: true };
   }
 

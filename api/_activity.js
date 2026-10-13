@@ -33,7 +33,7 @@ export function normalize(addr, normal = [], internal = [], apps = {}) {
 async function call(action, address, key) {
   const u = new URL(BASE);
   Object.entries({
-    chainid: CHAIN_ID, module: 'account', action, address, startblock: 0, endblock: 99999999,
+    chainid: CHAIN_ID, module: 'account', action, address, startblock: 0, endblock: 9999999999,
     page: 1, offset: 50, sort: 'desc', apikey: key,
   }).forEach(([k, v]) => u.searchParams.set(k, String(v)));
   const res = await fetch(u);

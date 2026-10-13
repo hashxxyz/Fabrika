@@ -4,7 +4,7 @@
 // a daily cap, and the relayer must keep a reserve for claim gas.
 import { parseEther, formatEther } from 'viem';
 import {
-  HttpError, route, verifyPrivy, privyUser, kvLock, kvDel, kvCount, kvDecr, publicClient, relayerClient, relayerAccount, ADDR_RE,
+  HttpError, route, verifyPrivy, privyUser, kvLock, kvDel, kvCount, kvDecr, publicClient, relayerClient, relayerAccount, withRelayerLock, ADDR_RE,
 } from './_shared.js';
 
 const YEAR = 365 * 24 * 3600;
@@ -42,7 +42,7 @@ export default route('POST', async (req) => {
       console.error(`Relayer ${relayer.address} is low for starter balances: ${formatEther(bal)} MON`);
       throw new HttpError(503, 'Starter balances are paused. Try again later.');
     }
-    const hash = await relayerClient().sendTransaction({ to: address, value: amount });
+    const hash = await withRelayerLock(() => relayerClient().sendTransaction({ to: address, value: amount }));
     try { await publicClient.waitForTransactionReceipt({ hash, timeout: 20_000 }); } catch { /* sent; the balance will show shortly */ }
     return { granted: true, amount: formatEther(amount) };
   } catch (e) {
