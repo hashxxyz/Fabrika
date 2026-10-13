@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PAY, payAbi, publicClient, chainNow } from './chain.js';
 import { randomId, saveInvoice, cleanError } from './lib.js';
-import { copyText } from './ui.jsx';
+import { copyText, QRToggle } from './ui.jsx';
 import { Link } from './router.jsx';
 import Gate from './Gate.jsx';
 import { pushHistory } from './history.js';
@@ -112,6 +112,7 @@ export default function Invoice({ acct, toast }) {
               <a className="btn ghost" href={`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`} target="_blank" rel="noopener">Telegram</a>
               {mail ? <a className="btn ghost" href={mail}>Email</a> : <Link className="btn ghost" to={url.replace(location.origin, '')}>Preview</Link>}
             </div>
+            <QRToggle url={url} className="btn ghost" />
           </div>
           <div className="actions">
             <Link className="btn ghost" to="/account">See invoices</Link>

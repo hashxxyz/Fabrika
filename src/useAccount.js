@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as PrivySDK from '@privy-io/react-auth';
 
-const { usePrivy, useWallets } = PrivySDK;
-import { createWalletClient, custom } from 'viem';
+import { createWalletClient, custom, parseEther } from 'viem';
 import { monadTestnet, publicClient } from './chain.js';
+
+const { usePrivy, useWallets } = PrivySDK;
+// Newer Privy versions have useExportWallet, older ones put exportWallet on usePrivy.
+// Pick once when the module loads, so the hook is called the same way on every render.
+const useExport = PrivySDK.useExportWallet || (() => null);
+// Accounts below this get a starter balance. Matches the server's default WELCOME_AMOUNT.
+const STARTER_BELOW = parseEther('0.1');
 
 export default function useAccount() {
   const { ready, authenticated, login, logout, getAccessToken, user, linkTwitter, exportWallet: legacyExport } = usePrivy();
   const { wallets } = useWallets();
-  // Newer Privy versions: useExportWallet. Older: exportWallet on usePrivy. Either way the build cannot break on it.
-  const exporter = PrivySDK.useExportWallet ? PrivySDK.useExportWallet() : null;
+  const exporter = useExport();
   const wallet = wallets.find((w) => w.walletClientType === 'privy') || wallets[0];
   const address = wallet?.address;
   const [balance, setBalance] = useState(null);
@@ -17,6 +22,8 @@ export default function useAccount() {
   const [retry, setRetry] = useState(0);
   const tried = useRef(''); // address we already asked for a starter balance
   const attempts = useRef(0); // retries so far, capped
+  const retryTimer = useRef(0);
+  useEffect(() => () => clearTimeout(retryTimer.current), []);
 
   const refresh = useCallback(async () => {
     if (!address) return;
@@ -31,7 +38,7 @@ export default function useAccount() {
 
   // New account with nothing in it: ask the server for a one-time starter balance, so nobody needs a faucet.
   useEffect(() => {
-    if (!authenticated || !address || balance !== 0n || tried.current === address) return;
+    if (!authenticated || !address || balance === null || balance >= STARTER_BELOW || tried.current === address) return;
     const k = `fabrika.welcome.${address.toLowerCase()}`;
     try { if (localStorage.getItem(k)) return; } catch { /* ignore */ }
     tried.current = address;
@@ -52,7 +59,7 @@ export default function useAccount() {
       } catch {
         setWelcome('idle');
         if (++attempts.current > 4) return;
-        setTimeout(() => { tried.current = ''; setRetry((n) => n + 1); }, 30000 * attempts.current);
+        retryTimer.current = setTimeout(() => { tried.current = ''; setRetry((n) => n + 1); }, 30000 * attempts.current);
       }
     })();
   }, [authenticated, address, balance, getAccessToken, refresh, retry]);

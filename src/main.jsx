@@ -26,7 +26,7 @@ if (!PRIVY_APP_ID) {
         loginMethods: ['email', 'google', 'twitter', 'wallet'],
         appearance: {
           theme: currentTheme(),
-          accentColor: '#2E7D53',
+          accentColor: '#836EF9',
           logo: `${location.origin}/logo.png?v=2`,
         },
         embeddedWallets: { ethereum: { createOnLogin: 'users-without-wallets' } },

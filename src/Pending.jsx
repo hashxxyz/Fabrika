@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fmtMon, fmtDate, shortAddr, cleanError } from './lib.js';
+import { fmtMon, fmtDate, shortAddr, cleanError, pollUntil } from './lib.js';
 import { Badge } from './ui.jsx';
 import { Link } from './router.jsx';
 import { receiptPath } from './Receipt.jsx';
@@ -24,8 +24,8 @@ export default function Pending({ acct, toast, prompt = false }) {
   }, []);
 
   const load = useCallback(async () => {
-    if (!acct.authenticated || !acct.address) return;
-    try { setState(await call('/api/pending')); } catch { /* service not set up: show nothing */ }
+    if (!acct.authenticated || !acct.address) return null;
+    try { const s = await call('/api/pending'); setState(s); return s; } catch { return null; /* service not set up: show nothing */ }
   }, [acct.authenticated, acct.address, call]);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function Pending({ acct, toast, prompt = false }) {
 
   async function linkX() {
     setErr(''); setBusy('link');
-    try { await acct.linkTwitter(); await new Promise((r) => setTimeout(r, 800)); await load(); } catch (e) { setErr(cleanError(e)); } finally { setBusy(''); }
+    try { await acct.linkTwitter(); await pollUntil(async () => !!(await load())?.linked); } catch (e) { setErr(cleanError(e)); } finally { setBusy(''); }
   }
 
   async function claim(it) {

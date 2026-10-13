@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useAccount from './useAccount.js';
 import { Link, useRoute, goBack, previousPath, navigate } from './router.jsx';
 import Home from './Home.jsx';
@@ -43,16 +43,24 @@ export default function App() {
   const acct = useAccount();
   const path = useRoute();
   const [toast, setToastText] = useState('');
-  const showToast = useCallback((t) => { setToastText(t); setTimeout(() => setToastText(''), 1800); }, []);
+  const toastTimer = useRef(0);
+  // Each toast gets its full time. A new one cancels the old timer, so it is never cut short.
+  const showToast = useCallback((t) => {
+    clearTimeout(toastTimer.current);
+    setToastText(t);
+    toastTimer.current = setTimeout(() => setToastText(''), 1800);
+  }, []);
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   // Pull history saved from other devices. Re-render the page only if something new arrived.
   const [hv, setHv] = useState(0);
+  const acctRef = useRef(acct);
+  acctRef.current = acct;
   useEffect(() => {
     if (!acct.authenticated || !acct.address) return;
     let live = true;
-    syncHistory(acct).then((n) => { if (live && n > 0) setHv((v) => v + 1); });
+    syncHistory(acctRef.current).then((n) => { if (live && n > 0) setHv((v) => v + 1); });
     return () => { live = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acct.authenticated, acct.address]);
 
   useEffect(() => { if (acct.welcome === 'done') showToast('Starter balance added'); }, [acct.welcome, showToast]);
@@ -73,7 +81,7 @@ export default function App() {
   else if (path === '/split') page = <Split acct={acct} toast={showToast} />;
   else if (path === '/save') page = <Savings acct={acct} toast={showToast} />;
   else if (path === '/transfer') page = <Transfer acct={acct} toast={showToast} />;
-  else if (path === '/account') page = <Account acct={acct} toast={showToast} />;
+  else if (path === '/account') page = <Account acct={acct} toast={showToast} version={hv} />;
   else if (path === '/settings') page = <Settings acct={acct} toast={showToast} />;
   else page = <Home acct={acct} toast={showToast} />;
 
@@ -86,7 +94,7 @@ export default function App() {
               <button className="back" type="button" onClick={() => goBack(parent)} aria-label={`Back to ${backTo}`} title={`Back to ${backTo}`}>{ARROW_LEFT}</button>
             )}
             <Link className="mark" to="/">
-              <img src="/icon-64.png?v=2" alt="" width="28" height="28" />
+              <img src="/mark.png?v=3" alt="" width="30" height="30" />
               Fabrika
             </Link>
           </div>
@@ -102,8 +110,8 @@ export default function App() {
           </span>
         </div>
       </header>
-      <main className={landing || isClaim ? 'hero' : 'app-main'}>
-        <div className="wrap" key={path === '/account' || path === '/' ? hv : 0}>{page}</div>
+      <main className={isClaim ? 'hero claim' : landing ? 'hero' : 'app-main'}>
+        <div className="wrap">{page}</div>
       </main>
       <footer className="wrap foot">
         <span>Demo on Monad testnet. Money here has no real value.</span>

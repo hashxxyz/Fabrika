@@ -3,6 +3,16 @@ import QRCode from 'qrcode';
 
 // A QR code for a link. Long invoice links carry line items in a "d" parameter. The pay page reads the real
 // amount from the chain, so for a QR we drop "d" when the link is too long to scan.
+export function QRToggle({ url, className = '' }) {
+  const [on, setOn] = useState(false);
+  return (
+    <>
+      <button className={className} type="button" onClick={() => setOn(!on)} aria-expanded={on}>{on ? 'Hide QR code' : 'Show QR code'}</button>
+      {on && <QR url={url} />}
+    </>
+  );
+}
+
 export function QR({ url, size = 200 }) {
   const [src, setSrc] = useState('');
   const [bad, setBad] = useState(false);

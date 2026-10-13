@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatEther } from 'viem';
 import { VAULT, vaultAbi, publicClient, STATUS } from './chain.js';
 import { Link } from './router.jsx';
@@ -7,8 +7,9 @@ import { loadBatches, cleanError, fmtMon, fmtDate, KINDS } from './lib.js';
 import { Badge } from './ui.jsx';
 import Share from './Share.jsx';
 
-export default function Batches({ acct, toast, embedded = false }) {
-  const [batches] = useState(() => loadBatches(acct.address));
+export default function Batches({ acct, toast, embedded = false, version = 0 }) {
+  // version bumps when history from another device is merged, so the list reloads without remounting the page.
+  const batches = useMemo(() => loadBatches(acct.address), [acct.address, version]);
   const [status, setStatus] = useState({});
   const [busyId, setBusyId] = useState('');
   const [loading, setLoading] = useState(false);

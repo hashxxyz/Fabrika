@@ -69,6 +69,15 @@ export const removeBatch = (addr, batchId) => {
   try { localStorage.setItem(key(addr), JSON.stringify(loadBatches(addr).filter((x) => x.batchId !== batchId))); } catch { /* ignore */ }
 };
 
+// Ask again until fn() returns true, up to `tries` times. Used after Privy links an account, where the server needs a moment to see it.
+export async function pollUntil(fn, { tries = 6, ms = 800 } = {}) {
+  for (let i = 0; i < tries; i++) {
+    try { if (await fn()) return true; } catch { /* try again */ }
+    if (i < tries - 1) await new Promise((r) => setTimeout(r, ms));
+  }
+  return false;
+}
+
 export function cleanError(e) {
   const m = String(e?.shortMessage || e?.message || e || 'Something went wrong');
   const rejected = e?.name === 'UserRejectedRequestError' || e?.code === 4001 || e?.cause?.code === 4001 || /user rejected|user denied|rejected the request/i.test(m);

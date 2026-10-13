@@ -17,7 +17,7 @@ const HINT = {
   invoices: 'Requests for payment you created.',
 };
 
-export default function Account({ acct, toast }) {
+export default function Account({ acct, toast, version = 0 }) {
   const { hidden, toggle } = useHideBalance();
   const [tab, setTab] = useState('activity');
   return (
@@ -50,8 +50,8 @@ export default function Account({ acct, toast }) {
             ))}
           </div>
           <div id="h-panel-activity" role="tabpanel" aria-labelledby="h-tab-activity" hidden={tab !== 'activity'}><Activity acct={acct} toast={toast} /></div>
-          <div id="h-panel-payouts" role="tabpanel" aria-labelledby="h-tab-payouts" hidden={tab !== 'payouts'}><Batches acct={acct} toast={toast} embedded /></div>
-          <div id="h-panel-invoices" role="tabpanel" aria-labelledby="h-tab-invoices" hidden={tab !== 'invoices'}><Invoices acct={acct} toast={toast} embedded /></div>
+          <div id="h-panel-payouts" role="tabpanel" aria-labelledby="h-tab-payouts" hidden={tab !== 'payouts'}><Batches acct={acct} toast={toast} embedded version={version} /></div>
+          <div id="h-panel-invoices" role="tabpanel" aria-labelledby="h-tab-invoices" hidden={tab !== 'invoices'}><Invoices acct={acct} toast={toast} embedded version={version} /></div>
         </div>
       </section>
     </Gate>

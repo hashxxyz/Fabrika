@@ -9,8 +9,8 @@ import { payLink, money } from './invoiceLib.js';
 const FILTERS = [['all', 'All'], ['open', 'Open'], ['paid', 'Paid'], ['closed', 'Closed']];
 const inFilter = (f, s) => f === 'all' || (f === 'open' && s === 1) || (f === 'paid' && s === 2) || (f === 'closed' && (s === 3 || s === 4));
 
-export default function Invoices({ acct, toast, embedded = false }) {
-  const [list] = useState(() => loadInvoices(acct.address));
+export default function Invoices({ acct, toast, embedded = false, version = 0 }) {
+  const list = useMemo(() => loadInvoices(acct.address), [acct.address, version]);
   const [status, setStatus] = useState({});
   const [busyId, setBusyId] = useState('');
   const [filter, setFilter] = useState('all');

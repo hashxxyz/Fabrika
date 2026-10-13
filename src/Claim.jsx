@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatEther } from 'viem';
 import { VAULT, BOT, vaultAbi, publicClient, STATUS } from './chain.js';
 import { Link } from './router.jsx';
 import { receiptPath } from './Receipt.jsx';
-import { fmtMon, fmtDate, cleanError, cleanNote } from './lib.js';
+import { fmtMon, fmtDate, cleanError, cleanNote, pollUntil } from './lib.js';
 import { Stitch, Badge } from './ui.jsx';
 
 const ID_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -34,13 +34,16 @@ export default function Claim({ acct }) {
       .catch(() => setLoadErr('Could not reach Monad. Try again.'));
   }, [a]);
 
-  async function call(path, init = {}) {
-    const token = await acct.getAccessToken();
+  // acct is a new object on every App render. Read the token getter through a ref so these callbacks stay stable and never go stale.
+  const tokenRef = useRef(acct.getAccessToken);
+  tokenRef.current = acct.getAccessToken;
+  const call = useCallback(async (path, init = {}) => {
+    const token = await tokenRef.current();
     const res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` } });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(j.message || (res.status === 404 ? 'The claim service is not live yet.' : 'Request failed. Try again.'));
     return j;
-  }
+  }, []);
 
   const checkConfirmed = useCallback(async () => {
     if (!acct.authenticated || !acct.address || !ID_RE.test(a)) return false;
@@ -50,8 +53,7 @@ export default function Claim({ acct }) {
       setLinkedAs(j.linked || '');
       return !!j.confirmed;
     } catch { return false; }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [acct.authenticated, acct.address, a, kind]);
+  }, [acct.authenticated, acct.address, a, kind, call]);
 
   // Check once on load (the person may already have confirmed), then poll while they are in Telegram.
   useEffect(() => { checkConfirmed(); }, [checkConfirmed]);
@@ -73,9 +75,8 @@ export default function Claim({ acct }) {
     setErr(''); setBusy(true);
     try {
       await acct.linkTwitter();
-      // Give Privy a moment to save the link, then check it against the payout.
-      await new Promise((r) => setTimeout(r, 800));
-      await checkConfirmed();
+      // Privy needs a moment to save the link. Check again until the server sees it.
+      await pollUntil(checkConfirmed);
     } catch (e) { setErr(cleanError(e)); } finally { setBusy(false); }
   }
 
