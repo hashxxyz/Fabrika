@@ -316,6 +316,12 @@ body { background:radial-gradient(120% 520px at 50% 0%, var(--monad-wash), trans
 .balrow { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
 .eye { background:none; border:0; color:inherit; opacity:.85; cursor:pointer; padding:8px; margin:-8px -8px -8px 0; border-radius:999px; display:inline-flex; flex:none; }
 .eye:hover { opacity:1; }
+.balbtns { display:inline-flex; align-items:center; gap:2px; margin-right:-8px; flex:none; }
+.balbtns .eye { margin:-8px 0; }
+.eye:disabled { opacity:.4; cursor:default; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.spin { animation:spin .7s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin { animation:none; } }
 .eye svg { width:22px; height:22px; display:block; }
 .eye:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
 

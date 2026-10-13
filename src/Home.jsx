@@ -62,12 +62,25 @@ const ACTIONS = [
 function Overview({ acct, toast }) {
   const recent = acct.address ? recentActivity(acct.address, 5) : [];
   const { hidden, toggle } = useHideBalance();
+  const [spin, setSpin] = useState(false);
+  const doRefresh = async () => {
+    if (spin) return;
+    setSpin(true);
+    try { await acct.refresh(); } finally { setTimeout(() => setSpin(false), 500); }
+  };
   const who = acct.label ? (acct.label.split('@')[0] || acct.label) : '';
   return (
     <section className="col home">
       {who && <h1 className="title">Hi, {who}</h1>}
       <div className="balcard">
-        <div className="balrow"><div className="k">Your balance</div><BalanceEye hidden={hidden} onToggle={toggle} /></div>
+        <div className="balrow"><div className="k">Your balance</div><div className="balbtns">
+            <button className="eye" type="button" onClick={doRefresh} disabled={!acct.address} aria-label="Refresh balance" title="Refresh balance">
+              <svg className={spin ? 'spin' : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 16h5v5" />
+              </svg>
+            </button>
+            <BalanceEye hidden={hidden} onToggle={toggle} />
+          </div></div>
         <div className="big"><span aria-label={hidden ? 'Balance hidden' : undefined}>{acct.balance == null ? '…' : hidden ? '••••' : fmtMon(acct.balance)}</span><small>MON</small></div>
         <div className="addr">
           <span>{acct.address ? shortAddr(acct.address) : 'Setting up your account…'}</span>
