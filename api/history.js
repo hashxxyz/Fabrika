@@ -5,7 +5,7 @@
 // every item is checked against the chain before it is stored (the sender, the recipient tag, the invoice owner).
 import {
   HttpError, route, verifyPrivy, privyUser, kvPush, kvList, kvLock, kvDel, kvSet, readAllocation, readRequest, publicClient,
-  tagOf, maskEmail, ID_RE, ADDR_RE,
+  tagOf, maskEmail, ID_RE, ADDR_RE, kvCmd, env,
 } from './_shared.js';
 
 const YEAR = 365 * 24 * 3600;
@@ -15,6 +15,11 @@ async function once(key, fn) {
   if (!(await kvLock(key.toLowerCase(), YEAR))) return;
   try { await fn(); } catch (e) { await kvDel(key.toLowerCase()).catch(() => {}); throw e; }
 }
+// Direct wallet sends never touch a Fabrika contract, so they are counted here, once per verified transaction.
+// Amounts are stored in micro-MON (wei / 1e12) so the total fits a Redis integer. One script keeps the three counters in step.
+const COUNT = "redis.call('INCRBY',KEYS[1],ARGV[1]) redis.call('INCR',KEYS[2]) redis.call('SADD',KEYS[3],ARGV[2]) return 1";
+const recordDirect = (from, wei) => kvCmd('EVAL', COUNT, '3', 'stats:direct:micro', 'stats:direct:count', 'stats:wallets', String(wei / 10n ** 12n), String(from).toLowerCase());
+const fabrikaContracts = () => new Set(['VAULT_ADDRESS', 'PAY_ADDRESS', 'SPLIT_ADDRESS', 'SAVINGS_ADDRESS'].map((k) => env(k, `VITE_${k}`).toLowerCase()).filter(Boolean));
 const cleanNote = (s) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
 
 const get = route('GET', async (req) => {
@@ -75,6 +80,8 @@ const post = route('POST', async (req) => {
     if (!tx || !tx.to || !mine(tx.from)) throw new HttpError(403, 'That transfer is not yours.');
     const rc = await publicClient.getTransactionReceipt({ hash: b.hash }).catch(() => null);
     if (!rc || rc.status !== 'success') throw new HttpError(409, 'That transfer is not confirmed.');
+    // Sends into a Fabrika contract are already counted from its events, so only plain wallet sends are added here.
+    if (!fabrikaContracts().has(tx.to.toLowerCase())) await once(`stat:seen:${b.hash}`, () => recordDirect(tx.from, tx.value));
     await once(`hist:seen:${b.hash}`, () => kvPush(`hist:tr:${tx.from.toLowerCase()}`, { hash: b.hash.toLowerCase(), to: tx.to, amount: tx.value.toString(), at: Date.now(), ...(cleanNote(b.note) ? { note: cleanNote(b.note) } : {}) }));
     return { ok: true };
   }

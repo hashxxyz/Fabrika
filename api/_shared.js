@@ -119,6 +119,7 @@ async function redis(...cmd) {
   if (!res.ok || j.error) { console.error('Redis error', j.error || res.status); throw new HttpError(503, 'The claim service is busy. Try again.'); }
   return j.result;
 }
+export const kvCmd = redis; // raw command, used by the stats counters
 export const kvSet = (k, v, ttl) => redis('SET', k, JSON.stringify(v), 'EX', String(ttl));
 export const kvGet = async (k) => { const r = await redis('GET', k); return r ? JSON.parse(r) : null; };
 export const kvDel = (k) => redis('DEL', k);
