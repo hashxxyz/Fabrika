@@ -86,7 +86,7 @@ export default function App() {
               <button className="back" type="button" onClick={() => goBack(parent)} aria-label={`Back to ${backTo}`} title={`Back to ${backTo}`}>{ARROW_LEFT}</button>
             )}
             <Link className="mark" to="/">
-              <img src="/icon-64.png" alt="" width="28" height="28" />
+              <img src="/icon-64.png?v=2" alt="" width="28" height="28" />
               Fabrika
             </Link>
           </div>
@@ -107,9 +107,10 @@ export default function App() {
       </main>
       <footer className="wrap foot">
         <span>Built on Monad. Testnet only: MON here has no value.</span>
-        {path === '/' && (
-          <span><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Get test MON</a> &nbsp; <a href="https://testnet.monadvision.com" target="_blank" rel="noopener">Explorer</a></span>
-        )}
+        <span>
+          {path === '/' && (<><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Get test MON</a> &nbsp; <a href="https://testnet.monadvision.com" target="_blank" rel="noopener">Explorer</a> &nbsp; </>)}
+          <a href="https://x.com/monadfabrika" target="_blank" rel="noopener noreferrer">Follow on X</a>
+        </span>
       </footer>
       {!isClaim && (
         <nav className="tabbar" aria-label="Main">
