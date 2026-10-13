@@ -16,6 +16,7 @@ export default function useAccount() {
   const [welcome, setWelcome] = useState('idle'); // idle | sending | done
   const [retry, setRetry] = useState(0);
   const tried = useRef(''); // address we already asked for a starter balance
+  const attempts = useRef(0); // retries so far, capped
 
   const refresh = useCallback(async () => {
     if (!address) return;
@@ -44,8 +45,15 @@ export default function useAccount() {
         if (res.ok || res.status === 409) { try { localStorage.setItem(k, '1'); } catch { /* ignore */ } }
         if (res.ok) { setWelcome('done'); await refresh(); return; }
         setWelcome('idle');
-        if (res.status !== 409) throw new Error('retry');
-      } catch { setWelcome('idle'); setTimeout(() => { tried.current = ''; setRetry((n) => n + 1); }, 30000); }
+        if (res.status === 409) return;
+        // Other 4xx answers will not change by asking again. Only retry rate limits and server errors.
+        if (res.status >= 400 && res.status < 500 && res.status !== 429) return;
+        throw new Error('retry');
+      } catch {
+        setWelcome('idle');
+        if (++attempts.current > 4) return;
+        setTimeout(() => { tried.current = ''; setRetry((n) => n + 1); }, 30000 * attempts.current);
+      }
     })();
   }, [authenticated, address, balance, getAccessToken, refresh, retry]);
 

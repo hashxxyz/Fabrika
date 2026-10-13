@@ -30,7 +30,7 @@ export default function Pending({ acct, toast, prompt = false }) {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30000);
+    const t = setInterval(() => { if (!document.hidden) load(); }, 60000);
     return () => clearInterval(t);
   }, [load]);
 

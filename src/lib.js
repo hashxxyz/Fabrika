@@ -71,7 +71,8 @@ export const removeBatch = (addr, batchId) => {
 
 export function cleanError(e) {
   const m = String(e?.shortMessage || e?.message || e || 'Something went wrong');
-  if (/user rejected|denied|cancel/i.test(m)) return 'You cancelled the request.';
+  const rejected = e?.name === 'UserRejectedRequestError' || e?.code === 4001 || e?.cause?.code === 4001 || /user rejected|user denied|rejected the request/i.test(m);
+  if (rejected) return 'You cancelled the request.';
   if (/insufficient funds/i.test(m)) return 'Not enough MON in your wallet for this amount plus the network fee.';
   return m.length > 200 ? m.slice(0, 200) + '…' : m;
 }

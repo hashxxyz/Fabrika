@@ -113,13 +113,14 @@ export default function ReceiptPage({ toast }) {
     refund: 'Payment returned', invoice: 'Invoice paid', 'invoice-cancel': 'Invoice cancelled', 'invoice-createRequest': 'Invoice created',
   };
   const ok = rc.status === 'success';
+  const sponsored = kind === 'claim'; // the relayer sent it and paid the fee, not the person who got the money
   const fee = rc.gasUsed * (rc.effectiveGasPrice ?? 0n);
   const rows = [
     ['Date', new Date(time * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })],
-    ['From', shortAddr(tx.from)],
+    sponsored ? ['Paid from', 'Fabrika vault'] : ['From', shortAddr(tx.from)],
     kind === 'transfer' ? ['To', shortAddr(tx.to)] : null,
     ...extra,
-    ['Network fee', `${fmtMon(fee, 6)} MON`],
+    sponsored ? ['Network fee', 'Paid by Fabrika'] : ['Network fee', `${fmtMon(fee, 6)} MON`],
     ['Network', 'Monad Testnet'],
   ];
 

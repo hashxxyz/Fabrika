@@ -34,7 +34,8 @@ export default function Batches({ acct, toast, embedded = false }) {
     try {
       const wc = await acct.getClient();
       const hash = await wc.writeContract({ address: VAULT, abi: vaultAbi, functionName: fn, args: [id] });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const rc = await publicClient.waitForTransactionReceipt({ hash });
+      if (rc.status !== 'success') throw new Error('The transaction failed. Refresh and try again.');
       toast(fn === 'cancel' ? 'Cancelled. Funds returned.' : 'Refunded.');
       acct.refresh();
       await load();

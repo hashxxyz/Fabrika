@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import { formatEther } from 'viem';
 import { ADDR, splitAbi, SPLIT_STATUS } from './abis.js';
-import { chainNow } from './chain.js';
+import { chainNow, publicClient } from './chain.js';
 import { parseAmount, randomId, cleanNote, fmtMon, shortAddr, fmtDate } from './lib.js';
 import { param, ID_RE, read, useTx, useLive, saveMine, loadMine, NotOn, Share, Done, Row, Err, Bar, bytes, same } from './kit.jsx';
 import { Badge } from './ui.jsx';
 import { Link } from './router.jsx';
 import Gate from './Gate.jsx';
+
+// One RPC call for every slot. Falls back to single reads if multicall is not available.
+async function readSlots(id, count) {
+  const idx = Array.from({ length: count }, (_, i) => BigInt(i));
+  try {
+    return await publicClient.multicall({ contracts: idx.map((i) => ({ address: ADDR.split, abi: splitAbi, functionName: 'getSlot', args: [id, i] })), allowFailure: false });
+  } catch {
+    return Promise.all(idx.map((i) => read(ADDR.split, splitAbi, 'getSlot', [id, i])));
+  }
+}
 
 const DUE = [['604800', '7 days'], ['2592000', '30 days'], ['86400', '1 day'], ['0', 'No deadline']];
 
@@ -88,7 +98,7 @@ function View({ acct, id, toast }) {
     if (!valid) return null;
     const s = await read(ADDR.split, splitAbi, 'getSplit', [id]);
     const count = Number(s[2]);
-    const rows = await Promise.all(Array.from({ length: count }, (_, i) => read(ADDR.split, splitAbi, 'getSlot', [id, BigInt(i)])));
+    const rows = await readSlots(id, count);
     return { creator: s[0], expiresAt: s[1], count, paidCount: Number(s[3]), status: Number(s[4]), note: s[5], rows };
   }, [id], 5000);
 
@@ -105,7 +115,7 @@ function View({ acct, id, toast }) {
 
   async function pay() {
     // Someone else may take the slot first. Re-read, then pay the first one still open.
-    const fresh = await Promise.all(Array.from({ length: data.count }, (_, i) => read(ADDR.split, splitAbi, 'getSlot', [id, BigInt(i)])));
+    const fresh = await readSlots(id, data.count);
     const idx = fresh.findIndex((r) => r[1] === '0x0000000000000000000000000000000000000000');
     if (idx < 0) { reload(); return tx.setErr('Everyone has already paid.'); }
     const r = await tx.run('Paying…', (wc) => wc.writeContract({ address: ADDR.split, abi: splitAbi, functionName: 'payShare', args: [id, BigInt(idx)], value: fresh[idx][0] }));

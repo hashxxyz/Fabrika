@@ -14,9 +14,21 @@ export function Badge({ children }) {
 }
 
 export function copyText(text, toast) {
-  const done = () => toast && toast('Copied');
-  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, done);
-  else done();
+  const ok = () => toast && toast('Copied');
+  const fail = () => toast && toast('Could not copy. Select the text and copy it by hand.');
+  // Older browsers and some in-app browsers block the clipboard API. Fall back to a hidden textarea.
+  const legacy = () => {
+    try {
+      const t = document.createElement('textarea');
+      t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(t); t.select();
+      const good = document.execCommand('copy');
+      t.remove();
+      good ? ok() : fail();
+    } catch { fail(); }
+  };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(ok, legacy);
+  else legacy();
 }
 
 // Balance privacy: one switch for the whole app, remembered on this device (not on the chain, not on the server).

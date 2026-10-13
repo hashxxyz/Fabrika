@@ -10,14 +10,42 @@ async function call(acct, path, init = {}) {
 }
 
 // Tell the server about something that just happened, so it shows on the person's other devices.
+// A failed post is kept and retried on the next sync, so an X payment still reaches the recipient's Pending list.
+// The server stores each item once, so sending the same one twice is safe.
+const outKey = (a) => `fabrika.outbox.${String(a).toLowerCase()}`;
+const readOut = (a) => { try { return JSON.parse(localStorage.getItem(outKey(a)) || '[]'); } catch { return []; } };
+const writeOut = (a, list) => { try { localStorage.setItem(outKey(a), JSON.stringify(list.slice(-30))); } catch { /* storage full or blocked */ } };
+
 export async function pushHistory(acct, body) {
-  try { await call(acct, '/api/history', { method: 'POST', body: JSON.stringify(body) }); } catch { /* local copy still works */ }
+  try { await call(acct, '/api/history', { method: 'POST', body: JSON.stringify(body) }); }
+  catch (e) {
+    // A 4xx answer will not change on retry. Anything else (offline, 5xx, 429) is kept.
+    const code = Number(e?.message);
+    if (code >= 400 && code < 500 && code !== 429) return;
+    if (acct.address) writeOut(acct.address, [...readOut(acct.address), { body, at: Date.now() }]);
+  }
+}
+
+async function flushOutbox(acct) {
+  const list = readOut(acct.address);
+  if (!list.length) return;
+  const keep = [];
+  for (const it of list) {
+    if (Date.now() - it.at > 7 * 86400000) continue;
+    try { await call(acct, '/api/history', { method: 'POST', body: JSON.stringify(it.body) }); }
+    catch (e) {
+      const code = Number(e?.message);
+      if (!(code >= 400 && code < 500 && code !== 429)) keep.push(it);
+    }
+  }
+  writeOut(acct.address, keep);
 }
 
 // Pull this wallet's history from the server into this device. Returns how many items were new.
 export async function syncHistory(acct) {
   const addr = acct.address;
   if (!addr) return 0;
+  await flushOutbox(acct).catch(() => {});
   try {
     const h = await call(acct, `/api/history?address=${addr}`);
     let added = 0;

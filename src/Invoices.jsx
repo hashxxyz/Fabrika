@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PAY, payAbi, publicClient, PAY_STATUS } from './chain.js';
 import { loadInvoices, cleanError, fmtDate, shortAddr } from './lib.js';
+import { formatEther } from 'viem';
 import { Badge, copyText } from './ui.jsx';
 import { Link } from './router.jsx';
 import { payLink, money } from './invoiceLib.js';
@@ -34,7 +35,8 @@ export default function Invoices({ acct, toast, embedded = false }) {
     try {
       const wc = await acct.getClient();
       const hash = await wc.writeContract({ address: PAY, abi: payAbi, functionName: 'cancel', args: [id] });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const rc = await publicClient.waitForTransactionReceipt({ hash });
+      if (rc.status !== 'success') throw new Error('The transaction failed. Refresh and try again.');
       toast('Invoice cancelled.');
       await load();
     } catch (e) {
@@ -70,7 +72,7 @@ export default function Invoices({ acct, toast, embedded = false }) {
     list.forEach((i) => {
       const st = status[i.id];
       rows.push([
-        i.d?.c || '', i.d?.e || '', i.note, money(i.amount).replace(' MON', '').replace(/,/g, ''), st ? PAY_STATUS[st.s] : '',
+        i.d?.c || '', i.d?.e || '', i.note, formatEther(BigInt(i.amount)), st ? PAY_STATUS[st.s] : '',
         new Date(i.createdAt).toISOString().slice(0, 10), i.expiresAt ? new Date(i.expiresAt * 1000).toISOString().slice(0, 10) : '',
         st?.s === 2 ? new Date(st.paidAt * 1000).toISOString().slice(0, 10) : '', st?.s === 2 ? st.payer : '',
       ]);

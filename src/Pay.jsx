@@ -74,12 +74,13 @@ export default function Pay({ acct }) {
         {loadErr ? <p className="err">{loadErr}</p> : !info ? <p className="note" style={{ margin: 0 }}>Loading invoice…</p> : (
           <>
             <div className="inv-doc">
-              <div className="card-head"><h3>{rich && det.b ? det.b : 'Invoice'}</h3><Badge>{paid ? 'Paid' : PAY_STATUS[info.status]}</Badge></div>
+              <div className="card-head"><h3>Invoice</h3><Badge>{paid ? 'Paid' : PAY_STATUS[info.status]}</Badge></div>
               {rich && det.s ? <p className="note" style={{ margin: 0 }}>Issued {new Date(det.s * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p> : null}
               <div className="slip-amt" style={{ margin: 0 }}>{fmtMon(info.amount)}<small>MON</small></div>
               {!rich && <p className="sub" style={{ margin: 0 }}>{info.note}</p>}
               <div>
                 <div className="set-row"><span>From</span><span>{verified ? <b>{verified}</b> : who === null ? shortAddr(info.recipient) : <>Not verified · {shortAddr(info.recipient)}</>}</span></div>
+                {rich && det.b && <div className="set-row"><span>Name given by sender</span><span>{det.b}</span></div>}
                 {rich && (det.c || det.e) && <div className="set-row"><span>Bill to</span><span>{det.c}{det.c && det.e ? <br /> : null}{det.e}</span></div>}
                 <div className="set-row"><span>Pay by</span><span>{Number(info.expiresAt) ? fmtDate(info.expiresAt) : 'No deadline'}</span></div>
               </div>
