@@ -13,6 +13,7 @@ import Docs from './Docs.jsx';
 import Split from './Split.jsx';
 import Savings from './Savings.jsx';
 import { shortAddr } from './lib.js';
+import markImage from './markImage.js';
 import { syncHistory } from './history.js';
 
 const ico = (d) => (
@@ -94,7 +95,7 @@ export default function App() {
               <button className="back" type="button" onClick={() => goBack(parent)} aria-label={`Back to ${backTo}`} title={`Back to ${backTo}`}>{ARROW_LEFT}</button>
             )}
             <Link className="mark" to="/">
-              <img src="/mark.png?v=3" alt="" width="30" height="30" />
+              <img src={markImage} alt="" width="30" height="30" />
               Fabrika
             </Link>
           </div>
