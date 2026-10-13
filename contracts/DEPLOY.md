@@ -30,7 +30,7 @@ Same steps as FabrikaPay (Remix, compiler 0.8.24, EVM version `paris`, Injected 
 
 None of them has an owner or admin. `FabrikaCover` fixes its adjudicator and rate at deploy. `FabrikaSavings` fixes its two rates.
 
-Only `FabrikaSplit` and `FabrikaSavings` have screens in this app today. Pledge, Gift, IncomeShare, Stream and Cover are contracts only, and their env variables are not read yet.
+Only `FabrikaSplit` and `FabrikaSavings` have screens in this app today. The other five live in `contracts/experimental/` with their own tests in `test/experimental/`. Pledge, Gift, IncomeShare, Stream and Cover are contracts only, and their env variables are not read yet.
 After you deploy `FabrikaCover`, add liquidity by calling `deposit()`. Cover can only be sold up to what the pool holds.
 After you deploy `FabrikaSavings`, fund its rewards pool from the app (Goal savings > Rewards pool). You can also point a `FabrikaPledge` beneficiary at the savings contract address, so forfeited stakes become savers' rewards.
 
