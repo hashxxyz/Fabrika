@@ -44,7 +44,7 @@ export default function Pending({ acct, toast, prompt = false }) {
     try {
       const j = await call('/api/claim', { method: 'POST', body: JSON.stringify({ allocationId: it.id, destination: acct.address, kind: 'x' }) });
       setClaimed((c) => [...c, { id: it.id, amount: it.amount, tx: j.txHash }]);
-      toast?.('Claimed. The money is in your wallet.');
+      toast?.('Claimed. The money is in your account.');
       acct.refresh?.();
       await load();
     } catch (e) { setErr(cleanError(e)); } finally { setBusy(''); }
@@ -70,7 +70,7 @@ export default function Pending({ acct, toast, prompt = false }) {
   return (
     <div className="card">
       <div className="card-head"><h3>Pending to claim</h3><Badge>{items.length}</Badge></div>
-      <p className="note" style={{ margin: 0 }}>Sent to @{state.x}. Tap Claim and it goes straight to your wallet. You pay no fee.</p>
+      <p className="note" style={{ margin: 0 }}>Sent to @{state.x}. Tap Claim and it goes straight to your account. You pay no fee.</p>
       <div>
         {items.map((it) => (
           <div className="pend-row" key={it.id}>

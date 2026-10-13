@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { publicClient } from './chain.js';
 import { cleanError, ADDR_RE, shortAddr } from './lib.js';
-import { copyText } from './ui.jsx';
+import { copyText, QR } from './ui.jsx';
 import { Link } from './router.jsx';
 
 export const ID_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -100,6 +100,7 @@ export function NotOn({ name }) {
 }
 
 export function Share({ url, text, toast }) {
+  const [qr, setQr] = useState(false);
   return (
     <>
       <code className="callout" style={{ overflowWrap: 'anywhere' }}>{url}</code>
@@ -108,6 +109,8 @@ export function Share({ url, text, toast }) {
         <a className="btn ghost" href={`https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`} target="_blank" rel="noopener">WhatsApp</a>
       </div>
       <a className="btn ghost" href={`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`} target="_blank" rel="noopener">Telegram</a>
+      <button className="btn ghost" type="button" onClick={() => setQr(!qr)} aria-expanded={qr}>{qr ? 'Hide QR code' : 'Show QR code'}</button>
+      {qr && <QR url={url} />}
     </>
   );
 }

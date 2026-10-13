@@ -125,7 +125,7 @@ export default function Claim({ acct }) {
                 {!isX && !confirmed && tgLink && (
                   <>
                     <a className="btn ghost linkbtn2" href={tgLink} target="_blank" rel="noopener">Open Telegram</a>
-                    <p className="note">In Telegram, tap Start, then confirm your wallet. This page updates by itself.</p>
+                    <p className="note">In Telegram, tap Start, then confirm your account. This page updates by itself.</p>
                   </>
                 )}
                 {isX && !confirmed && (
@@ -135,7 +135,7 @@ export default function Claim({ acct }) {
                   </>
                 )}
                 {confirmed && <p className="note">{isX ? `X account @${linkedAs} confirmed.` : 'Telegram confirmed.'}</p>}
-                <button className="btn" type="button" onClick={claim} disabled={busy || !confirmed} style={{ marginTop: 10 }}>{busy && confirmed ? 'Claiming…' : 'Claim to my wallet'}</button>
+                <button className="btn" type="button" onClick={claim} disabled={busy || !confirmed} style={{ marginTop: 10 }}>{busy && confirmed ? 'Claiming…' : 'Claim to my account'}</button>
               </>
             )}
             {tx && tx !== 'done' && <p className="msg"><Link to={receiptPath(tx)}>View receipt</Link></p>}

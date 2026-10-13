@@ -106,9 +106,9 @@ export default function App() {
         <div className="wrap" key={path === '/account' || path === '/' ? hv : 0}>{page}</div>
       </main>
       <footer className="wrap foot">
-        <span>Built on Monad. Testnet only: MON here has no value.</span>
+        <span>Demo on Monad testnet. Money here has no real value.</span>
         <span>
-          {path === '/' && (<><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Get test MON</a> &nbsp; <a href="https://testnet.monadvision.com" target="_blank" rel="noopener">Explorer</a> &nbsp; </>)}
+          {path === '/' && (<><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Add funds</a> &nbsp; </>)}
           <a href="https://x.com/monadfabrika" target="_blank" rel="noopener noreferrer">Follow on X</a>
         </span>
       </footer>

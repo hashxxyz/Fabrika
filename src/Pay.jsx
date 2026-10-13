@@ -116,7 +116,7 @@ export default function Pay({ acct }) {
                     : <button className="btn" type="button" onClick={pay} disabled={!!busy || !acct.address || low}>{busy || `Pay ${formatEther(info.amount)} MON`}</button>}
                 {low && !mine && (acct.welcome === 'sending'
                   ? <p className="callout">Adding a starter balance to your account…</p>
-                  : <p className="callout warn">You need more MON to pay this. <a href={FAUCET} target="_blank" rel="noopener">Get test MON</a></p>)}
+                  : <p className="callout warn">You need more funds to pay this. <a href={FAUCET} target="_blank" rel="noopener">Add funds</a></p>)}
                 {err && <p className="err" role="alert" style={{ margin: 0 }}>{err}</p>}
               </>
             )}

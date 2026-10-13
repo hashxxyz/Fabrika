@@ -1,4 +1,23 @@
 import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+
+// A QR code for a link. Long invoice links carry line items in a "d" parameter. The pay page reads the real
+// amount from the chain, so for a QR we drop "d" when the link is too long to scan.
+export function QR({ url, size = 200 }) {
+  const [src, setSrc] = useState('');
+  const [bad, setBad] = useState(false);
+  useEffect(() => {
+    let live = true;
+    let u = url;
+    if (u.length > 900) { try { const x = new URL(u); x.searchParams.delete('d'); u = x.toString(); } catch { /* keep as is */ } }
+    QRCode.toDataURL(u, { margin: 1, width: size * 2, errorCorrectionLevel: 'M', color: { dark: '#14102b', light: '#ffffff' } })
+      .then((d) => { if (live) { setSrc(d); setBad(false); } })
+      .catch(() => { if (live) { setSrc(''); setBad(true); } });
+    return () => { live = false; };
+  }, [url, size]);
+  if (bad) return <p className="note" style={{ margin: 0 }}>This link is too long for a QR code. Use Copy link instead.</p>;
+  return src ? <img className="qr" src={src} alt="QR code. Scan it with a phone camera to open the link." width={size} height={size} /> : null;
+}
 
 export function Stitch() {
   return (

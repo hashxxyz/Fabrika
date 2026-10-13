@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { copyText, BalanceEye, useHideBalance } from './ui.jsx';
-import { FAUCET, explorer } from './chain.js';
+import { FAUCET } from './chain.js';
 import { fmtMon, shortAddr } from './lib.js';
 import { Link } from './router.jsx';
 import Batches from './Batches.jsx';
@@ -34,10 +34,9 @@ export default function Account({ acct, toast }) {
         </div>
         <div className="actions">
           <Link className="btn" to="/transfer">Send money</Link>
-          <a className="btn ghost" href={explorer.address(acct.address)} target="_blank" rel="noopener">View on explorer</a>
         </div>
         {acct.balance === 0n && !hidden && (
-          <p className="callout warn">Your balance is empty. Get free test MON from the <a href={FAUCET} target="_blank" rel="noopener">faucet</a> and paste the address above.</p>
+          <p className="callout warn">Your balance is empty. Your starter balance should arrive in a moment. If it does not, <a href={FAUCET} target="_blank" rel="noopener">add funds here</a>.</p>
         )}
         <Pending acct={acct} toast={toast} prompt />
         <div className="card hist-card">
