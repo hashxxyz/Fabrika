@@ -9,6 +9,9 @@ pragma solidity ^0.8.20;
 ///      (sponsors, or forfeited stakes sent here from FabrikaPledge, since this contract accepts
 ///      plain transfers). If the pool runs dry, yield is paid up to what is left. Principal is
 ///      never touched by yield payments and can be withdrawn at any time.
+/// @dev WARNING: the boost depends on verifiers the owner picks. Nothing stops an owner naming their own
+///      second wallet, so the boost can be farmed and the rewards pool drained first come first served.
+///      Use only with verifiers you trust, or keep the pool small. This is a design limit, not a code bug.
 contract FabrikaSavings {
     struct Account {
         address owner;

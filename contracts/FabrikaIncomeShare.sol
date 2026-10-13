@@ -68,7 +68,7 @@ contract FabrikaIncomeShare {
         require(shareBps > 0 && shareBps <= MAX_SHARE_BPS, "Bad share");
         require(capBps >= MIN_CAP_BPS && capBps <= MAX_CAP_BPS, "Bad cap");
         require(fundBy > block.timestamp, "Bad deadline");
-        require(termSecs > 0, "Bad term");
+        require(termSecs > 0 && termSecs <= 3650 days, "Bad term");
         require(bytes(note).length <= MAX_NOTE_BYTES, "Note too long");
 
         Deal storage d = _deals[id];

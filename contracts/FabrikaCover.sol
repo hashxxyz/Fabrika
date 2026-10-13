@@ -10,6 +10,8 @@ pragma solidity ^0.8.20;
 ///      sold is reserved until the policy and its claim window end. Underwriter shares are
 ///      priced by pool assets, so one underwriter can lose money if claims exceed premiums.
 ///      No owner, no admin. The adjudicator and the rate are fixed at deploy.
+/// @dev WARNING: a loss only reduces pool assets when the claim is paid. Underwriters can withdraw free
+///      (unreserved) assets before that. Treat the pool as trust based, like the adjudicator.
 contract FabrikaCover {
     struct Policy {
         address insured;
@@ -113,6 +115,17 @@ contract FabrikaCover {
         p.settled = true;
         reserved -= p.cover;
         emit Released(id);
+    }
+
+    /// @notice Release many ended policies in one call. Skips any that are not ready.
+    function releaseMany(bytes32[] calldata ids) external {
+        for (uint256 i = 0; i < ids.length; ++i) {
+            Policy storage p = _policies[ids[i]];
+            if (p.insured == address(0) || p.settled || block.timestamp <= uint256(p.end) + CLAIM_WINDOW) continue;
+            p.settled = true;
+            reserved -= p.cover;
+            emit Released(ids[i]);
+        }
     }
 
     // ---------------------------------------------------------- underwriter side

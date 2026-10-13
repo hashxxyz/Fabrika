@@ -85,7 +85,15 @@ contract FabrikaStream {
         uint256 toRecipient = streamed - s.withdrawn;
         uint256 toPayer = total - streamed;
         s.withdrawn = streamed;
-        if (toRecipient > 0) _send(s.recipient, toRecipient);
+        if (toRecipient > 0) {
+            // A recipient contract that rejects MON must not lock the payer's refund.
+            // If the payout fails, it stays claimable through withdraw().
+            (bool ok, ) = s.recipient.call{value: toRecipient}("");
+            if (!ok) {
+                s.withdrawn -= toRecipient;
+                toRecipient = 0;
+            }
+        }
         if (toPayer > 0) _send(s.payer, toPayer);
         emit StreamCancelled(id, toRecipient, toPayer);
     }
