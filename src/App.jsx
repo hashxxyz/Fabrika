@@ -12,6 +12,7 @@ import ReceiptPage from './Receipt.jsx';
 import Docs from './Docs.jsx';
 import Split from './Split.jsx';
 import Savings from './Savings.jsx';
+import Stats from './Stats.jsx';
 import { shortAddr } from './lib.js';
 import markImage from './markImage.js';
 import { syncHistory } from './history.js';
@@ -35,7 +36,7 @@ function Redirect({ to }) {
 
 // Where Back goes when there is no earlier page in this visit (for example a page opened from a bookmark).
 const PARENT = { '/receipt': '/account' };
-const NAMES = { '/': 'Home', '/transfer': 'Send', '/account': 'Account', '/settings': 'Settings', '/invoice': 'Invoice', '/split': 'Split a bill', '/save': 'Goal savings', '/docs': 'Docs', '/receipt': 'Receipt' };
+const NAMES = { '/': 'Home', '/transfer': 'Send', '/account': 'Account', '/settings': 'Settings', '/invoice': 'Invoice', '/split': 'Split a bill', '/save': 'Goal savings', '/docs': 'Docs', '/stats': 'Stats', '/receipt': 'Receipt' };
 const ARROW_LEFT = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
 );
@@ -75,6 +76,7 @@ export default function App() {
   let page;
   if (path.startsWith('/pay')) page = <Pay acct={acct} />;
   else if (path === '/docs') page = <Docs />;
+  else if (path === '/stats') page = <Stats />;
   else if (path === '/receipt') page = <ReceiptPage toast={showToast} />;
   else if (path.startsWith('/claim')) page = <Claim acct={acct} toast={showToast} />;
   else if (path === '/invoice') page = <Invoice acct={acct} toast={showToast} />;
@@ -117,7 +119,7 @@ export default function App() {
       <footer className="wrap foot">
         <span>Demo on Monad testnet. Money here has no real value.</span>
         <span>
-          {path === '/' && (<><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Add funds</a> &nbsp; </>)}
+          {path === '/' && (<><Link to="/docs">Docs</Link> &nbsp; <Link to="/docs#faq">FAQ</Link> &nbsp; <Link to="/stats">Stats</Link> &nbsp; <a href="https://faucet.monad.xyz" target="_blank" rel="noopener">Add funds</a> &nbsp; </>)}
           <a href="https://x.com/monadfabrika" target="_blank" rel="noopener noreferrer">Follow on X</a>
         </span>
       </footer>
