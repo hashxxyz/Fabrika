@@ -26,23 +26,36 @@ const ABI = {
   ]),
 };
 
+// An error from the explorer itself. Its message holds no secrets, so it is safe to show.
+class ExplorerError extends Error {}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchPage(address, key, page) {
+  const u = new URL(BASE);
+  Object.entries({ chainid: CHAIN_ID, module: 'logs', action: 'getLogs', address, fromBlock: 0, toBlock: 'latest', page, offset: PAGE, apikey: key })
+    .forEach(([k, v]) => u.searchParams.set(k, String(v)));
+  // The free plan allows about 3 calls a second. If the explorer says it is busy, wait and ask again.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(u);
+    if (!res.ok) throw new ExplorerError(`explorer answered ${res.status}`);
+    const j = await res.json();
+    if (Array.isArray(j.result)) return j.result;
+    if (/no records found/i.test(String(j.message))) return [];
+    const why = String(j.result || j.message || 'bad explorer response').slice(0, 140);
+    if (/rate limit/i.test(why) && attempt < 2) { await sleep(1200); continue; }
+    throw new ExplorerError(why);
+  }
+}
+
 async function getLogs(address, key) {
   const rows = [];
   let partial = false;
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const u = new URL(BASE);
-    Object.entries({ chainid: CHAIN_ID, module: 'logs', action: 'getLogs', address, fromBlock: 0, toBlock: 'latest', page, offset: PAGE, apikey: key })
-      .forEach(([k, v]) => u.searchParams.set(k, String(v)));
-    const res = await fetch(u);
-    if (!res.ok) throw new Error(`explorer http ${res.status}`);
-    const j = await res.json();
-    if (!Array.isArray(j.result)) {
-      if (/no records found/i.test(String(j.message))) break;
-      throw new Error(String(j.result || j.message || 'bad explorer response'));
-    }
-    rows.push(...j.result);
-    if (j.result.length < PAGE) break;
+    const part = await fetchPage(address, key, page);
+    rows.push(...part);
+    if (part.length < PAGE) break;
     if (page === MAX_PAGES) partial = true;
+    await sleep(400);
   }
   return { rows, partial };
 }
@@ -80,7 +93,10 @@ export default route('GET', async () => {
   try {
     for (const name of Object.keys(addr)) {
       if (!addr[name]) continue;
-      const { rows, partial: cut } = await getLogs(addr[name], key);
+      await sleep(350); // stay under the free plan's calls per second
+      let got;
+      try { got = await getLogs(addr[name], key); } catch (e) { e.contract = name; throw e; }
+      const { rows, partial: cut } = got;
       if (cut) partial = true;
       for (const row of rows) {
         const e = decode(ABI[name], row);
@@ -96,8 +112,11 @@ export default route('GET', async () => {
       }
     }
   } catch (e) {
-    console.error('stats failed', e?.message || e);
-    throw new HttpError(503, 'Could not read the blockchain right now. Try again in a moment.');
+    console.error('stats failed', e?.contract || '', e?.message || e);
+    // Explorer errors carry no secrets, so show them. That lets you see what to fix without opening the server logs.
+    const where = e?.contract ? ` (${e.contract}` : '';
+    const detail = e instanceof ExplorerError ? `${where ? where + ': ' : ' ('}${e.message})` : `${where ? where + ': ' : ' ('}${e?.name || 'error'})`;
+    throw new HttpError(503, `Could not read the blockchain right now${detail}.`);
   }
 
   // Direct wallet sends, counted by the app (micro-MON back to wei).
