@@ -28,12 +28,15 @@ export default route('POST', async (req) => {
   if (!(await kvLock(kAddr, YEAR))) throw new HttpError(409, 'Starter balance already sent.');
   if (!(await kvLock(kDid, YEAR))) { await kvDel(kAddr).catch(() => {}); throw new HttpError(409, 'Starter balance already sent.'); }
   let dayKey = '';
-  const release = () => Promise.all([kvDel(kAddr), kvDel(kDid), dayKey ? kvDecr(dayKey) : null]).catch(() => {});
+  let counted = false; // only undo the daily counter if it was incremented
+  const release = () => Promise.all([kvDel(kAddr), kvDel(kDid), counted ? kvDecr(dayKey) : null]).catch(() => {});
 
   try {
     const day = new Date().toISOString().slice(0, 10);
     dayKey = `welcome:day:${day}`;
-    if ((await kvCount(dayKey, 2 * 24 * 3600)) > dailyCap()) {
+    const n = await kvCount(dayKey, 2 * 24 * 3600);
+    counted = true;
+    if (n > dailyCap()) {
       throw new HttpError(503, 'Starter balances are used up for today.');
     }
     const relayer = relayerAccount();

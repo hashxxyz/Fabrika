@@ -39,7 +39,14 @@ const key = (name) => {
   return privateKeyToAccount(k.startsWith('0x') ? k : `0x${k}`);
 };
 export const authorizerAccount = () => key('AUTHORIZER_PRIVATE_KEY');
-export const relayerAccount = () => (env('RELAYER_PRIVATE_KEY') ? key('RELAYER_PRIVATE_KEY') : authorizerAccount());
+// The key that signs claims must not also pay gas. If the gas wallet leaks, the attacker should not be able to release vault money.
+// Set ALLOW_SHARED_RELAYER=1 only on a throwaway testnet setup.
+export const relayerAccount = () => {
+  if (env('RELAYER_PRIVATE_KEY')) return key('RELAYER_PRIVATE_KEY');
+  if (env('ALLOW_SHARED_RELAYER') === '1') return authorizerAccount();
+  console.error('Missing env var RELAYER_PRIVATE_KEY. Use a separate wallet for gas, not the authorizer key.');
+  throw new HttpError(503, 'The claim service is not configured yet.');
+};
 export const relayerClient = () => createWalletClient({ account: relayerAccount(), chain: monadTestnet, transport: http() });
 
 // Same rule as src/lib.js: trim, drop leading @, lowercase, keccak256 of the UTF-8 bytes.

@@ -66,13 +66,18 @@ export default route('POST', async (req) => {
 
     const txHash = await withRelayerLock(() => relayerClient().writeContract(request));
     await kvSet(`sent:${allocationId}`, txHash, 120).catch(() => {});
-    if (!isX) await kvDel(`conf:${allocationId}`);
     try {
       const rc = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
-      if (rc.status !== 'success') throw new HttpError(500, 'The claim transaction failed on chain.');
+      if (rc.status !== 'success') {
+        // Reverted: free the guard and keep the confirmation, so the person can tap Claim again without redoing Telegram.
+        await kvDel(`sent:${allocationId}`).catch(() => {});
+        throw new HttpError(500, 'The claim transaction failed on chain. Try again.');
+      }
     } catch (e) {
       if (e instanceof HttpError) throw e; // timeout: the tx is sent, the page will show the hash
     }
+    // The confirmation is single use. Drop it only once the claim went through (or is still pending).
+    if (!isX) await kvDel(`conf:${allocationId}`).catch(() => {});
     return { txHash };
   } finally {
     await kvDel(`lock:${allocationId}`).catch(() => {});
