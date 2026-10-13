@@ -86,7 +86,7 @@ export default function App() {
               <button className="back" type="button" onClick={() => goBack(parent)} aria-label={`Back to ${backTo}`} title={`Back to ${backTo}`}>{ARROW_LEFT}</button>
             )}
             <Link className="mark" to="/">
-              <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="6" height="24" rx="3" /><rect x="6" y="4" width="20" height="6" rx="3" /><rect x="6" y="14" width="14" height="6" rx="3" /><circle cx="23" cy="25" r="3" opacity=".6" /></svg>
+              <img src="/icon-64.png" alt="" width="28" height="28" />
               Fabrika
             </Link>
           </div>

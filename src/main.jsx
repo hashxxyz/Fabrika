@@ -27,7 +27,7 @@ if (!PRIVY_APP_ID) {
         appearance: {
           theme: currentTheme(),
           accentColor: '#2E7D53',
-          logo: `${location.origin}/logo.svg`,
+          logo: `${location.origin}/logo.png`,
         },
         embeddedWallets: { ethereum: { createOnLogin: 'users-without-wallets' } },
         defaultChain: monadTestnet,
