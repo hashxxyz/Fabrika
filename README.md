@@ -91,8 +91,8 @@ Vercel serverless functions in `api/`:
 Why the confirm tap shows the wallet: it stops someone sending a victim their own bot link so the victim confirms the attacker's wallet. The claim only goes through if the Privy user and wallet match the ones that started the flow.
 
 ### Setup
-1. Make the authorizer key: `node scripts/gen-key.mjs`. Deploy the vault with that address as the constructor argument. Optionally make a second key for the relayer.
-2. Fund the relayer address (or the authorizer if you use one key) with MON from the faucet. Claims are refused below 0.01 MON.
+1. Make the authorizer key: `node scripts/gen-key.mjs`. Deploy the vault with that address as the constructor argument. Make a second key for the relayer: it pays gas and must not be the authorizer.
+2. Fund the relayer address with MON from the faucet and set `RELAYER_PRIVATE_KEY`. Claims are refused below 0.01 MON.
 3. Create a bot with @BotFather. Put the token and username in env.
 4. Create a free Upstash Redis database and copy its REST URL and token.
 5. Set all variables from `.env.example` in Vercel, then deploy. Also set `VITE_BOT_USERNAME`.
@@ -148,7 +148,7 @@ Seven extra contracts, each switched on by its own address (see `contracts/DEPLO
 - Explorer: https://testnet.monadvision.com
 - Faucet: https://faucet.monad.xyz
 
-`legacy/` holds the old single-file app (Web3Auth and WalletConnect) for reference. `contracts/FabrikaPay.sol` powers invoices.
+`contracts/experimental/` holds Pledge, Gift, IncomeShare, Stream and Cover. They are tested but have no screens yet. `contracts/FabrikaPay.sol` powers invoices.
 
 ## Pending to claim (X)
 
